@@ -1,0 +1,1 @@
+© 2014 1C LLC. All rights reserved. Made available under the Eclipse Public License v1.0
