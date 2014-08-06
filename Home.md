@@ -1,4 +1,84 @@
 # Get a handle on Handly
+**A step-by-step guide to getting started with Eclipse Handly
+http://eclipse.org/handly/**
+
+Probably the best way to tell you about Handly is to walk you though
+the development of an example. We'll use a simple Xtext-based language
+as the basis for the running example. While nothing in the Handly core
+depends on Xtext, going this way will be much easier for you to get started.
+The complete example is available as part of the Examples feature of Handly;
+see the plug-ins `org.eclipse.handly.examples.basic` and
+`org.eclipse.handly.examples.basic.ui`.
+
+This article is intended for implementers of Eclipse-based development tools
+for a programming language. We assume a familiarity with plug-in development
+and the Eclipse resource model, and also expect some architectural understanding
+of the core infrastructure of JDT, CDT or other similar Eclipse-based language
+tooling. That is, the text is not specifically about why you need a
+(handle-based) code model for your language or what the heck it is
+(although we hope to shed some light on these questions too). Rather,
+it's about how to implement one with Handly.
+
+Let's start with description of our language called Foo.
+Here's its Xtext grammar:
+
+```antlr
+// Foo.xtext
+
+Module:
+  vars += Var*
+  defs += Def*
+;
+	
+Var:
+  'var' name=ID ';'
+;
+	
+Def:
+  'def' name=ID '(' (params+=ID)? (',' params+=ID)* ')' '{' '}'
+;
+```
+
+Even if you don't know Xtext, you should have no difficulties in understanding
+the syntax of this language. Here's a code sample:
+
+```scala
+// sample.foo
+
+var x;
+var y;
+def f() {}
+def f(x) {}
+def f(x, y) {}
+```
+
+The language is intentionally contrived to have only the simplest structural
+elements: declarations of variables and functions. There are no type definitions
+or symbolic references; variables don't have initializing expressions and
+function bodies are always empty. Nevertheless, this language is fertile ground
+for a Handly example because it is simple so we won't have to explain a lot of
+stuff that isn't Handly-related, but at the same time it is sufficient for
+understanding the main aspects of implementation of a Handly-based model.
+We further assume for simplification that `.foo` source files may only reside
+directly under a Foo project, i.e. there is no concept of 'build path' involved.
+
+Here's a sample structure of the workspace rendered from the Foo language's
+point of view:
+
+    /            - Foo model
+     sample/     - Foo project
+      sample.foo - Foo source file
+       x         - Foo variable
+       f(x)      - Foo function
+
+As you can see, there are several kinds of elements here: **Foo model**
+(the root element; corresponds to the workspace root), **Foo project**
+(a project with the Foo nature), **Foo source file** (a file with the Foo
+content type), **Foo variable** and **Foo function** (structural elements
+inside a Foo file). These elements constitute a *code model* for the
+Foo language, from the workspace root level down to structural elements
+inside source files. In this article we'll walk you through the process
+of implementing this model.
 
 The article is organized as a step-by-step guide, each step taking you 
 around Handly in increasing detail.
