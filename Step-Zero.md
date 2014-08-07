@@ -12,8 +12,8 @@ https://www.eclipse.org/downloads/.
 
 You also need to add Handly into the Eclipse installation. This can be
 done by installing all features from a Handly update site. Please visit
-https://projects.eclipse.org/projects/technology.handly/downloads to find
-the URL of the update site for the latest release of Handly.
+the project's [Downloads page](https://projects.eclipse.org/projects/technology.handly/downloads)
+to find the URL of the update site for the latest release of Handly.
 
 ## Setting Up a Workspace
 
