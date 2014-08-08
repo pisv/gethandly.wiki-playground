@@ -6,11 +6,11 @@ environment for our running example.
 
 ## Setting Up Eclipse
 
-To use the examples, Eclipse IDE for Java and DSL Developers is required.
+To use the examples, **Eclipse IDE for Java and DSL Developers** is required.
 You can find a build for your platform by visiting
 https://www.eclipse.org/downloads/.
 
-You also need to add Handly into the Eclipse installation. This can be
+You also need to add **Handly** into the Eclipse installation. This can be
 done by installing all features from a Handly update site. Please visit
 the project's [Downloads page](https://projects.eclipse.org/projects/technology.handly/downloads)
 to find the URL of the update site for the latest release of Handly.
