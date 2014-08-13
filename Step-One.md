@@ -72,7 +72,7 @@ public class FooModel
      */
     public FooModel()
     {
-        super(null, null);
+        super(null /*no parent*/, null /*no name*/);
         this.workspace = ResourcesPlugin.getWorkspace();
     }
 
@@ -216,6 +216,8 @@ Now we can implement the remaining abstract methods of the `FooModel` class.
 First, `getHandleManager()`:
 
 ```java
+// FooModel.java
+
     @Override
     protected HandleManager getHandleManager()
     {
@@ -228,6 +230,8 @@ That's it. Rather trivial.
 Next goes the `buildStructure` method:
 
 ```java
+// FooModel.java
+
     @Override
     protected void buildStructure(Body body, Map<IHandle, Body> newElements)
         throws CoreException
@@ -237,31 +241,37 @@ Next goes the `buildStructure` method:
             new ArrayList<IFooProject>(projects.length);
         for (IProject project : projects)
         {
-            if (project.isOpen() && project.hasNature(IFooProject.NATURE_ID))
+            if (project.isOpen() &&
+                project.hasNature(IFooProject.NATURE_ID))
             {
                 fooProjects.add(new FooProject(this, project));
             }
         }
-        body.setChildren(fooProjects.toArray(new IHandle[fooProjects.size()]));
+        body.setChildren(fooProjects.toArray(
+            new IHandle[fooProjects.size()]));
     }
 ```
 
-The central idea of the *handle/body idiom* as implemented in Handly is that
-mutable structure and properties of a model element are stored separately
-in an internal `Body`, while the handle holds immutable, 'key' information
-(recall that handles are value objects). The method `buildStructure` must
-initialize the given `Body` based on the element's current contents. In this
-case, we set the currently open Foo projects as the children of the `FooModel`.
-We don't use the additional parameter `newElements` here because we intend for
-the `FooProject` to be responsible for building its structure, rather than have
-the `FooModel` to also build the structure of its projects and put it
-(as handle/body pairs) in the `newElements` map. The `FooProject` and the
-`FooModel` are said to be *openable* elements because they know how to open
-themselves (build their structure and properties) when asked to do so. In that
-way, the model is populated with its elements lazily, on demand. In contrast,
-elements inside a source file are *never* openable because the source file
-builds all of its structure in one go by parsing its text contents, as we
-shall see in the next step. See the [System Overview]
+The central idea behind the *handle/body idiom* as implemented in Handly
+is that mutable structure and properties of a model element are stored
+separately in an internal `Body`, while the handle holds immutable, 'key'
+information (recall that handles are value objects).
+
+The method `buildStructure` must initialize the given `Body` based on
+the element's current contents. In this case, we set the currently open
+Foo projects as the children of the `FooModel`. We don't use the additional
+parameter `newElements` here because we intend the `FooProject` to be
+responsible for building its structure, rather than have the `FooModel`
+to also build the structure for its child projects and put it (as handle/
+body pairs) into the `newElements` map.
+
+The `FooProject` and the `FooModel` are said to be *openable* elements because
+they know how to open themselves (build their structure and properties)
+when asked to do so. In that way, the model is populated with its elements
+lazily, on demand. In contrast, elements inside a source file are *never*
+openable because the source file builds all of its inner structure in one go
+by parsing the text contents, as we shall see in the next step.
+See the [System Overview]
 (http://www.eclipse.org/downloads/download.php?file=/handly/docs/handly-overview.pdf&r=1)
 for more information on the architecture.
 
@@ -272,6 +282,8 @@ First, to have the class `FooProject` compile without errors, we need to
 implement the inherited abstract methods:
 
 ```java
+// FooProject.java
+
     @Override
     protected HandleManager getHandleManager()
     {
@@ -284,18 +296,19 @@ implement the inherited abstract methods:
         if (!project.exists())
             throw new CoreException(Activator.createErrorStatus(
                 MessageFormat.format(
-                    "Project ''{0}'' does not exist in workspace", name), null));
+                    "Project ''{0}'' does not exist in workspace", name),
+                null));
 
         if (!project.isOpen())
-            throw new CoreException(
-                Activator.createErrorStatus(
-                    MessageFormat.format("Project ''{0}'' is not open", name),
-                    null));
+            throw new CoreException(Activator.createErrorStatus(
+                MessageFormat.format("Project ''{0}'' is not open", name),
+                null));
 
         if (!project.hasNature(NATURE_ID))
-            throw new CoreException(
-                Activator.createErrorStatus(MessageFormat.format(
-                    "Project ''{0}'' does not have the Foo nature", name), null));
+            throw new CoreException(Activator.createErrorStatus(
+                MessageFormat.format(
+                    "Project ''{0}'' does not have the Foo nature", name),
+                null));
     }
 
     @Override
@@ -325,7 +338,7 @@ class FooModelCache
     private static final int DEFAULT_PROJECT_SIZE = 5;
 
     private Body modelBody; // Foo model element's body
-    private HashMap<IHandle, Body> projectCache; // cache of open Foo projects
+    private HashMap<IHandle, Body> projectCache; // open Foo projects
 
     public FooModelCache()
     {
@@ -389,8 +402,8 @@ public interface IFooModel
     extends IHandle
 {
     /**
-     * Returns the Foo project with the given name. The given name must be 
-     * a valid path segment as defined by {@link IPath#isValidSegment(String)}. 
+     * Returns the Foo project with the given name. The given name must be a
+     * valid path segment as defined by {@link IPath#isValidSegment(String)}
      * This is a handle-only method. The project may or may not exist.
      *
      * @param name the name of the Foo project (not <code>null</code>)
@@ -428,11 +441,13 @@ public interface IFooProject
     String NATURE_ID = FooProjectNature.ID;
 
     /**
-     * Returns the <code>IProject</code> on which this <code>IFooProject</code>
-     * was created. This is handle-only method.
+     * Returns the <code>IProject</code> on which this
+     * <code>IFooProject</code> was created.
+     * This is handle-only method.
      *
-     * @return the <code>IProject</code> on which this <code>IFooProject</code>
-     *  was created (never <code>null</code>)
+     * @return the <code>IProject</code> on which this
+     * <code>IFooProject</code> was created
+     * (never <code>null</code>)
      */
     IProject getProject();
 }
@@ -523,12 +538,13 @@ public class FooModelCore
 
 That's all for now. Let's test it!
 
-## Testing
+## Testing the Model
 
 We provide a test fragment called `org.eclipse.handly.examples.basic.ui.tests`
-with a predefined launch configuration in the [Step One repository]
-(https://github.com/pisv/gethandly.1st). It is probably a good idea 
-to check it out into your workspace if you have not done so already.
+in the [Step Zero repository](https://github.com/pisv/gethandly.0).
+It is probably a good idea to check this fragment out into your workspace
+if you have not done so already and use it as a starting point for writing
+tests for the model.
 
 The `workspace` folder of this fragment contains some set-up data for tests --
 just a few predefined projects for you to run tests against. To use this data,
@@ -550,7 +566,7 @@ public class FooModelTest
     {
         super.setUp();
         setUpProject("Test001"); // a predefined project with Foo nature
-        setUpProject("SimpleProject"); // a predefined project without Foo nature
+        setUpProject("SimpleProject"); // and another without Foo nature
     }
 }
 ```
@@ -574,10 +590,10 @@ Let's write the simplest possible test:
     }
 ```
 
-Run it! (as a JUnit Plug-in Test) You can use the predefined launch
-configuration for that.
+Run it as a JUnit Plug-in Test. You can use the predefined launch
+configuration in the test fragment for that.
 
-Hmm, we've got an error:
+Hmm, we've got an error!
 
 ```
 java.lang.IllegalStateException
@@ -680,11 +696,11 @@ care of that by updating the model cache in response to resource changes
 in the workspace. We need a *Delta Processor*. This brings us to the
 next section.
 
-## Keeping the model up-to-date
+## Keeping the Model Up-to-Date
 
 To keep our model up-to-date, we need to respond to resource changes in the
 Eclipse workspace. If you need a refresher on resource change listeners,
-[this Eclipse Corner article](https://www.eclipse.org/articles/Article-Resource-deltas/resource-deltas.html)
+the eclipse.org article [How You've Changed!](https://www.eclipse.org/articles/Article-Resource-deltas/resource-deltas.html)
 written by John Arthorne is an excellent reference. I really commend it to you!
 
 First, let's make the `FooModelManager` implement `IResourceChangeListener`
@@ -734,7 +750,7 @@ Next, we need to implement the inherited `resourceChanged` method:
     }
 ```
 
-Here, we just delegate event processing to a new class
+Here, we just delegate delta processing to a new class
 `FooDeltaProcessor` that implements `IResourceDeltaVisitor`:
 
 ```java
@@ -768,7 +784,8 @@ class FooDeltaProcessor
         return true;
     }
 
-    private boolean processProject(IResourceDelta delta) throws CoreException
+    private boolean processProject(IResourceDelta delta)
+        throws CoreException
     {
         switch (delta.getKind())
         {
@@ -837,7 +854,7 @@ a resource change event we update the Foo model by adding/removing
 child elements from the cached bodies or by evicting the element's 
 `Body` from the model cache (with all of its children).
 
-Run the test again. Success!
+The test case will now pass.
 
 Please note that the actual implementation of `FooDeltaProcessor`
 in the [Step One repository](https://github.com/pisv/gethandly.1st)
@@ -852,12 +869,12 @@ of the `FooDeltaProcessor` and the corresponding `FooModelTest`.
 Before we move onto the next step, let's review what we've done so far.
 
 We implemented a simple but complete Handly-based model to give you
-a taste of the basic structuring and behavior as well as the entire
+a taste of the basic structuring and behavior as well as of the entire
 development process. We also wrote some tests and implemented a
 resource delta processor for keeping the model up-to-date.
 
 The code may seem quite involved for such a simple model, but most
 of the code is actually the infrastructure that will not change much
 when we will take this basic model and add enough functionality to
-build a complete *code model* for the Foo language in the next step,
+build a complete *code model* for the Foo language in the next step:
 [[The Rest of the Model|Step Two]].
