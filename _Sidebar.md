@@ -1,5 +1,8 @@
 * [[Home]]
 * [[Step Zero: Setting Up|Step Zero]]
 * [[Step One: Basic Model|Step One]]
+  * [[Testing the Model|Step-One#testing-the-model]]
+  * [[Keeping the Model Up-to-Date|Step-One#keeping-the-model-up-to-date]]
 * [[Step Two: The Rest of the Model|Step Two]]
+  * [[Building the Structure of a Source File|Step-Two#building-the-structure-of-a-source-file]]
 * [[Step Three: Viewing the Model|Step Three]]
