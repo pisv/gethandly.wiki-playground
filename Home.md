@@ -88,3 +88,4 @@ around Handly in increasing detail.
 3. [[Step Two]] takes the basic model and adds the functionality
 expected of a code model for a programming language.
 4. [[Step Three]] displays the finished model in a view.
+5. [[Step Four]] brings the model truly to life with the working copy.

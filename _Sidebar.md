@@ -6,3 +6,4 @@
 * [[Step Two: The Rest of the Model|Step Two]]
   * [[Building the Structure of a Source File|Step-Two#building-the-structure-of-a-source-file]]
 * [[Step Three: Viewing the Model|Step Three]]
+* [[Step Four: Working Copy|Step Four]]
