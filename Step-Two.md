@@ -523,7 +523,7 @@ from the model cache (along with all descendants).
 
 The test case will now pass.
 
-## Building the Structure of a Source File
+## Building Source File Structure
 
 Let's get back to the `FooFile` and its `buildStructure` and
 `createStructuralAst` methods.
