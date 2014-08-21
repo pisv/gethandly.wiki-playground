@@ -15,6 +15,11 @@ done by installing all features from a Handly update site. Please visit
 the project's [Downloads page](https://projects.eclipse.org/projects/technology.handly/downloads)
 to find the URL of the update site for the latest release of Handly.
 
+**_ATTENTION:_** *Due to [bug 440457](https://bugs.eclipse.org/bugs/show_bug.cgi?id=440457)
+Handly 0.1.x is __not__ compatible with Xtext 2.7 or later. Please use
+Eclipse IDE for Java and DSL Developers Luna SR0 (4.4.0) or Kepler SR2 (4.3.2)
+with Handly 0.1.x.*
+
 ## Setting Up a Workspace
 
 You may want to checkout example plug-in projects [*] from the
@@ -30,4 +35,4 @@ and use it as a starting point for development of the current step's
 functionality.
 
 <sub>[*] When importing example projects with the import wizard,
-don't select the option Search for nested projects</sub>
+don't select the option __Search for nested projects__</sub>
