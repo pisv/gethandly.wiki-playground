@@ -324,6 +324,77 @@ workspace project is not accessible or doesn't have the Foo nature. For the
 moment, a `FooProject` won't have any child elements, so its `buildStructure`
 method is left empty.
 
+You might have noticed that we referred to the Foo nature a couple of times,
+but have not defined it yet. If you need a reference on what exactly a project
+nature is, the Eclipse Corner article [Project Builders and Natures]
+(https://www.eclipse.org/articles/Article-Builders/builders.html)
+authored by John Arthorne is a great resource.
+
+Project natures are contributed via an extension point:
+
+```xml
+<!-- plugin.xml -->
+
+   <extension
+         id="fooNature"
+         name="Foo Project Nature"
+         point="org.eclipse.core.resources.natures">
+      <runtime>
+         <run
+               class=
+"org.eclipse.handly.internal.examples.basic.ui.model.FooProjectNature">
+         </run>
+      </runtime>
+      <requires-nature
+            id="org.eclipse.xtext.ui.shared.xtextNature">
+      </requires-nature>
+   </extension>
+```
+
+with their run-time behavior provided by a class implementing `IProjectNature`:
+
+```java
+// package org.eclipse.handly.internal.examples.basic.ui.model
+
+/**
+ * Foo project nature.
+ */
+public class FooProjectNature
+    implements IProjectNature
+{
+    /**
+     * Foo nature id.
+     */
+    public static final String ID = Activator.PLUGIN_ID + ".fooNature";
+
+    private IProject project;
+
+    @Override
+    public void configure() throws CoreException
+    {
+    }
+
+    @Override
+    public void deconfigure() throws CoreException
+    {
+    }
+
+    @Override
+    public IProject getProject()
+    {
+        return project;
+    }
+
+    @Override
+    public void setProject(IProject project)
+    {
+        this.project = project;
+    }
+}
+```
+
+That's it for the Foo nature.
+
 Next, we need to provide an implementation for the `FooModelCache`:
 
 ```java
