@@ -27,12 +27,12 @@ You may want to checkout example plug-in projects [*] from the
 to use them as a basis for further development while following along
 with instructions of the next step: [[Basic Model|Step One]].
 
-In general, there is a separate sub-module repository hosting source code
+_In general, there is a separate sub-module repository hosting source code
 for a particular step of our running example. Each subsequent step takes the
 source code of the preceding step and adds some more functionality.
 In that way, you can always checkout the source code of the previous step
 and use it as a starting point for development of the current step's
-functionality.
+functionality._
 
 <sub>[*] When importing example projects with the import wizard,
 don't select the option __Search for nested projects__</sub>
