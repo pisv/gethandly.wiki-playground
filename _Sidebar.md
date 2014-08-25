@@ -1,4 +1,4 @@
-* [[Home]]
+* [[Get a Handle on Handly|Home]]
 * [[Step Zero: Setting Up|Step Zero]]
 * [[Step One: Basic Model|Step One]]
   * [[Testing the Model|Step-One#testing-the-model]]
@@ -6,4 +6,6 @@
 * [[Step Two: The Rest of the Model|Step Two]]
   * [[Building Source File Structure|Step-Two#building-source-file-structure]]
 * [[Step Three: Viewing the Model|Step Three]]
+  * [[Model Change Events|Step-Three#model-change-events]]
 * [[Step Four: Working Copy|Step Four]]
+  * [[Outline View|Step-Four#outline-view]]
