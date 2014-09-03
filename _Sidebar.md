@@ -1,4 +1,4 @@
-* [[Get a Handle on Handly|Home]]
+* [[Get a Handle on Handly!|Home]]
 * [[Step Zero: Setting Up|Step Zero]]
 * [[Step One: Basic Model|Step One]]
   * [[Testing the Model|Step-One#testing-the-model]]
