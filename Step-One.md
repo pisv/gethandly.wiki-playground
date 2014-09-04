@@ -83,7 +83,7 @@ public class FooModel
     }
 
     @Override
-    protected void validateExistence()
+    protected void validateExistence() throws CoreException
     {
         // always exists
     }
