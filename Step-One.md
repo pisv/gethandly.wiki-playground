@@ -103,79 +103,7 @@ if the element may not begin existence in the model (for example, if its
 underlying resource does not exist). In this case, this method does nothing
 as the root element always exists.
 
-That leaves us with two more abstract methods: `getHandleManager` and
-`buildStructure`. Those methods are central to the implementation of
-handle/body idiom in Handly and require some preliminary work
-before they can be implemented.
-
-The Handly-provided class `HandleManager` manages handle/body relationships
-for a handle-based model. Generally, each model will have its own instance
-of the `HandleManager` and each element of the model will return that instance
-from its `getHandleManager()` method. In that way, the handle manager is shared
-between all elements of the model.
-
-Let's define a special manager class for the Foo model that will hold
-the single instance of the `IFooModel` and the single instance of the
-`HandleManager` for the model:
-
-```java
-// package org.eclipse.handly.internal.examples.basic.ui.model
-
-/**
- * The manager for the Foo Model. 
- *
- * @threadsafe This class is intended to be thread-safe
- */
-public class FooModelManager
-{
-    /**
-     * The sole instance of the manager. 
-     */
-    public static final FooModelManager INSTANCE = new FooModelManager();
-
-    private IFooModel fooModel;
-    private HandleManager handleManager;
-
-    public void startup() throws Exception
-    {
-        fooModel = new FooModel();
-        handleManager = new HandleManager(new FooModelCache());
-    }
-
-    public void shutdown() throws Exception
-    {
-        handleManager = null;
-        fooModel = null;
-    }
-
-    public IFooModel getFooModel()
-    {
-        if (fooModel == null)
-            throw new IllegalStateException();
-        return fooModel;
-    }
-
-    public HandleManager getHandleManager()
-    {
-        if (handleManager == null)
-            throw new IllegalStateException();
-        return handleManager;
-    }
-
-    private FooModelManager()
-    {
-    }
-}
-```
-
-An instance of the `HandleManager` must be parameterized with an `IBodyCache`--
-a strategy for storing handle/body relationships. Each Handly-based model
-should provide its own, model-specific implementation of the `IBodyCache`,
-which may be as simple as a `HashMap` or as tricky as overflowing LRU cache(s).
-We'll get back to it in a moment.
-
-As another prerequisite, we need to define a constructor for the `FooProject`
-class:
+Similarly, for the class `FooProject`:
 
 ```java
 /**
@@ -208,87 +136,6 @@ public class FooProject
     {
         return project;
     }
-}
-```
-
-Now we can implement the remaining abstract methods of the `FooModel` class.
-
-First, `getHandleManager()`:
-
-```java
-// FooModel.java
-
-    @Override
-    protected HandleManager getHandleManager()
-    {
-        return FooModelManager.INSTANCE.getHandleManager();
-    }
-```
-
-That's it. Rather trivial.
-
-Next goes the `buildStructure` method:
-
-```java
-// FooModel.java
-
-    @Override
-    protected void buildStructure(Body body, Map<IHandle, Body> newElements)
-        throws CoreException
-    {
-        IProject[] projects = workspace.getRoot().getProjects();
-        List<IFooProject> fooProjects =
-            new ArrayList<IFooProject>(projects.length);
-        for (IProject project : projects)
-        {
-            if (project.isOpen() &&
-                project.hasNature(IFooProject.NATURE_ID))
-            {
-                fooProjects.add(new FooProject(this, project));
-            }
-        }
-        body.setChildren(fooProjects.toArray(
-            new IHandle[fooProjects.size()]));
-    }
-```
-
-The central idea behind the *handle/body idiom* as implemented in Handly
-is that mutable structure and properties of a model element are stored
-separately in an internal `Body`, while the handle holds immutable, 'key'
-information (recall that handles are value objects).
-
-The method `buildStructure` must initialize the given `Body` based on
-the element's current contents. In this case, we set the currently open
-Foo projects as the children of the `FooModel`. We don't use the additional
-parameter `newElements` here because we intend the `FooProject` to be
-responsible for building its structure, rather than have the `FooModel`
-to also build the structure for its child projects and put it (as handle/
-body pairs) into the `newElements` map.
-
-The `FooProject` and the `FooModel` are said to be *openable* elements because
-they know how to open themselves (build their structure and properties)
-when asked to do so. In that way, the model is populated with its elements
-lazily, on demand. In contrast, elements inside a source file are *never*
-openable because the source file builds all of its inner structure in one go
-by parsing the text contents, as we shall see in the next step.
-See the [System Overview]
-(http://www.eclipse.org/downloads/download.php?file=/handly/docs/handly-overview.pdf&r=1)
-for more information on the architecture.
-
-Now that we have a complete implementation for the class `FooModel`, let's
-test it. But before we can do it, a couple of more items require our attention.
-
-First, to have the class `FooProject` compile without errors, we need to
-implement the inherited abstract methods:
-
-```java
-// FooProject.java
-
-    @Override
-    protected HandleManager getHandleManager()
-    {
-        return FooModelManager.INSTANCE.getHandleManager();
-    }
 
     @Override
     protected void validateExistence() throws CoreException
@@ -310,27 +157,16 @@ implement the inherited abstract methods:
                     "Project ''{0}'' does not have the Foo nature", name),
                 null));
     }
-
-    @Override
-    protected void buildStructure(Body body, Map<IHandle, Body> newElements)
-        throws CoreException
-    {
-        // no children for now
-    }
+}
 ```
+ 
+In this case, `validateExistence` throws a `CoreException` when the underlying
+workspace project is not accessible or doesn't have the Foo nature.
 
-In this case, `validateExistence` throws a `CoreException` if the underlying
-workspace project is not accessible or doesn't have the Foo nature. For the
-moment, a `FooProject` won't have any child elements, so its `buildStructure`
-method is left empty.
-
-You might have noticed that we referred to the Foo nature a couple of times,
-but have not defined it yet. If you need a reference on what exactly a project
-nature is, the Eclipse Corner article [Project Builders and Natures]
-(https://www.eclipse.org/articles/Article-Builders/builders.html)
-authored by John Arthorne is a great resource.
-
-Project natures are contributed via an extension point:
+If you need a reference on what exactly a project nature is, the Eclipse Corner
+article [Project Builders and Natures](https://www.eclipse.org/articles/Article-Builders/builders.html)
+authored by John Arthorne is a great resource. Project natures are contributed
+via an extension point:
 
 ```xml
 <!-- plugin.xml -->
@@ -395,7 +231,134 @@ public class FooProjectNature
 
 That's it for the Foo nature.
 
-Next, we need to provide an implementation for the `FooModelCache`:
+At this time, we still need to implement two more abstract methods for
+our model elements: `buildStructure` and `getHandleManager`. Those methods
+are central to the implementation of *handle/body idiom* in Handly.
+
+The basic idea behind the handle/body idiom as implemented in Handly
+is that mutable structure and properties of a model element are stored
+separately in an internal `Body`, while the handle holds immutable, 'key'
+information (recall that handles are value objects).
+
+The method `buildStructure` must initialize the given `Body` based on
+the element's current contents. In this case, we set the currently open
+Foo projects as the children of the `FooModel`:
+
+```java
+// FooModel.java
+
+    @Override
+    protected void buildStructure(Body body, Map<IHandle, Body> newElements)
+        throws CoreException
+    {
+        IProject[] projects = workspace.getRoot().getProjects();
+        List<IFooProject> fooProjects =
+            new ArrayList<IFooProject>(projects.length);
+        for (IProject project : projects)
+        {
+            if (project.isOpen() &&
+                project.hasNature(IFooProject.NATURE_ID))
+            {
+                fooProjects.add(new FooProject(this, project));
+            }
+        }
+        body.setChildren(fooProjects.toArray(
+            new IHandle[fooProjects.size()]));
+    }
+```
+
+We don't use the additional parameter `newElements` here because we intend
+the `FooProject` to be responsible for building its structure, rather than
+have the `FooModel` to also build the structure for its child projects and
+put it (as handle/body pairs) into the `newElements` map.
+
+The `FooProject` and the `FooModel` are said to be *openable* elements because
+they know how to open themselves (build their structure and properties)
+when asked to do so. In that way, the model is populated with its elements
+lazily, on demand. In contrast, elements inside a source file are *never*
+openable because the source file builds all of its inner structure in one go
+by parsing the text contents, as we shall see in the next step.
+See the [System Overview]
+(http://www.eclipse.org/downloads/download.php?file=/handly/docs/handly-overview.pdf&r=1)
+for more information on the architecture.
+
+The Handly-provided class `HandleManager` manages handle/body relationships
+for a handle-based model. Generally, each model will have its own instance
+of the `HandleManager` and each element of the model will return that instance
+from its `getHandleManager()` method. In that way, the handle manager is shared
+between all elements of the model.
+
+Let's define a special manager class for the Foo model that will hold
+the single instance of the `IFooModel` and the single instance of the
+`HandleManager` for the model:
+
+```java
+// package org.eclipse.handly.internal.examples.basic.ui.model
+
+/**
+ * The manager for the Foo Model. 
+ *
+ * @threadsafe This class is intended to be thread-safe
+ */
+public class FooModelManager
+{
+    /**
+     * The sole instance of the manager. 
+     */
+    public static final FooModelManager INSTANCE = new FooModelManager();
+
+    private IFooModel fooModel;
+    private HandleManager handleManager;
+
+    public void startup() throws Exception
+    {
+        fooModel = new FooModel();
+        handleManager = new HandleManager(new FooModelCache());
+    }
+
+    public void shutdown() throws Exception
+    {
+        handleManager = null;
+        fooModel = null;
+    }
+
+    public IFooModel getFooModel()
+    {
+        if (fooModel == null)
+            throw new IllegalStateException();
+        return fooModel;
+    }
+
+    public HandleManager getHandleManager()
+    {
+        if (handleManager == null)
+            throw new IllegalStateException();
+        return handleManager;
+    }
+
+    private FooModelManager()
+    {
+    }
+}
+```
+
+Now we can implement the remaining abstract method `getHandleManager`
+of the `FooModel` class:
+
+```java
+// FooModel.java
+
+    @Override
+    protected HandleManager getHandleManager()
+    {
+        return FooModelManager.INSTANCE.getHandleManager();
+    }
+```
+
+An instance of the `HandleManager` must be parameterized with an `IBodyCache`--
+a strategy for storing handle/body relationships. Each Handly-based model
+should provide its own, model-specific implementation of the `IBodyCache`,
+which may be as tricky as overflowing LRU cache(s) or as simple as a `HashMap`:
 
 ```java
 // package org.eclipse.handly.internal.examples.basic.ui.model
@@ -458,9 +421,33 @@ class FooModelCache
 }
 ```
 
-Simple enough, right?
+Now that we have a complete implementation for the class `FooModel`, let's
+test it. But before we can do it, a couple of more items require our attention.
 
-Finally, to make writing tests for the model a bit more straightforward,
+First, to have the class `FooProject` compile without errors, we need to
+implement the inherited abstract methods:
+
+```java
+// FooProject.java
+
+    @Override
+    protected HandleManager getHandleManager()
+    {
+        return FooModelManager.INSTANCE.getHandleManager();
+    }
+
+    @Override
+    protected void buildStructure(Body body, Map<IHandle, Body> newElements)
+        throws CoreException
+    {
+        // no children for now
+    }
+```
+
+For the moment, a `FooProject` won't have any child elements, so its
+`buildStructure` method is left empty.
+
+Next, to make writing tests for the model a bit more straightforward,
 we need to define some handy methods for our model elements:
 
 ```java
@@ -621,7 +608,7 @@ The `workspace` folder of this fragment contains some set-up data for tests --
 just a few predefined projects for you to run tests against. To use this data,
 you would extend your test class from the Handly-provided `WorkspaceTestCase`
 and make calls to `setUpProject` from within your `setUp` method, passing
-the name of the project as the sole argument:
+the name of the predefined project as the sole argument:
 
 ```java
 // package org.eclipse.handly.internal.examples.basic.ui.model
@@ -637,12 +624,12 @@ public class FooModelTest
     {
         super.setUp();
         setUpProject("Test001"); // a predefined project with Foo nature
-        setUpProject("SimpleProject"); // and another without Foo nature
+        setUpProject("SimpleProject"); // another one without Foo nature
     }
 }
 ```
 
-The inherited `setUpProject` method creates a new project in the run-time
+The inherited `setUpProject` method creates a new project in the runtime
 workspace by copying the project's content from the `workspace` folder of
 the test fragment. It returns the created and opened `IProject`.
 
@@ -675,7 +662,7 @@ java.lang.IllegalStateException
 
 That goes to show you that those little tests may have some value some times!
 
-The reason is that we forgot to start up the `FooModelManager` in the bundle's
+It appears that we forgot to start up the `FooModelManager` in the bundle's
 Activator. Let's not forget, then, to stop it too.
 
 ```java
@@ -736,6 +723,7 @@ tests:
         IFooProject fooProject = fooProjects[0];
         assertEquals("Test001", fooProject.getName());
 
+        // new code -->
         IFooProject fooProject2 = fooModel.getFooProject("Test002");
         assertFalse(fooProject2.exists());
         setUpProject("Test002"); // a second project with Foo nature
@@ -744,6 +732,7 @@ tests:
         assertEquals(2, fooProjects.length);
         assertTrue(Arrays.asList(fooProjects).contains(fooProject));
         assertTrue(Arrays.asList(fooProjects).contains(fooProject2));
+        // <-- new code
     }
 ```
 
@@ -772,7 +761,7 @@ next section.
 To keep our model up-to-date, we need to respond to resource changes in the
 Eclipse workspace. If you need a refresher on resource change listeners,
 the eclipse.org article [How You've Changed!](https://www.eclipse.org/articles/Article-Resource-deltas/resource-deltas.html)
-written by John Arthorne is an excellent reference. I really commend it to you!
+written by John Arthorne is an excellent reference. We really commend it to you!
 
 First, let's make the `FooModelManager` implement `IResourceChangeListener`
 and subscribe to `POST_CHANGE` events in the workspace:
@@ -787,13 +776,17 @@ public class FooModelManager
     {
         fooModel = new FooModel();
         handleManager = new HandleManager(new FooModelCache());
+        // new code -->
         fooModel.getWorkspace().addResourceChangeListener(this,
             IResourceChangeEvent.POST_CHANGE);
+        // <-- new code
     }
 
     public void shutdown() throws Exception
     {
+        // new code -->
         fooModel.getWorkspace().removeResourceChangeListener(this);
+        // <-- new code
         handleManager = null;
         fooModel = null;
     }
@@ -821,8 +814,8 @@ Next, we need to implement the inherited `resourceChanged` method:
     }
 ```
 
-Here, we just delegate delta processing to a new class
-`FooDeltaProcessor` that implements `IResourceDeltaVisitor`:
+Here, we just delegate delta processing to the class `FooDeltaProcessor`
+that implements `IResourceDeltaVisitor`:
 
 ```java
 // package org.eclipse.handly.internal.examples.basic.ui.model
@@ -920,10 +913,10 @@ class FooDeltaProcessor
 }
 ```
 
-The idea behind this code is quite simple, actually. In response to 
-a resource change event we update the Foo model by adding/removing 
-child elements from the cached bodies or by evicting the element's 
-`Body` from the model cache (with all of its children).
+The basic idea behind this code is quite simple, actually. In response
+to a resource change event we update the Foo model by either adding/removing
+child elements from the cached bodies or by altogether evicting the
+element's `Body` from the model cache (with all of its children).
 
 The test case will now pass.
 
