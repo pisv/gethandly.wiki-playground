@@ -17,7 +17,7 @@ to find the URL of the update site for the latest release of Handly.
 
 **_ATTENTION:_** *Due to [bug 440457](https://bugs.eclipse.org/bugs/show_bug.cgi?id=440457)
 Handly 0.1.x is __not__ compatible with Xtext 2.7 or later. Please use
-Eclipse IDE for Java and DSL Developers Luna SR0 (4.4.0) or Kepler SR2 (4.3.2)
+Eclipse IDE for Java and DSL Developers Luna (4.4.0) or Kepler SR2 (4.3.2)
 with Handly 0.1.x.*
 
 ## Setting Up a Workspace
@@ -27,12 +27,12 @@ You may want to checkout example plug-in projects [*] from the
 to use them as a basis for further development while following along
 with instructions of the next step: [[Basic Model|Step One]].
 
-_In general, there is a separate sub-module repository hosting source code
-for a particular step of our running example. Each subsequent step takes the
-source code of the preceding step and adds some more functionality.
+**Note:** In general, there is a separate sub-module repository hosting
+source code for a particular step of our running example. Each subsequent step
+takes the source code of the preceding step and adds some more functionality.
 In that way, you can always checkout the source code of the previous step
 and use it as a starting point for development of the current step's
-functionality._
+functionality.
 
 <sub>[*] When importing example projects with the import wizard,
 don't select the option __Search for nested projects__</sub>
