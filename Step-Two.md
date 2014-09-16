@@ -1,16 +1,15 @@
 # Step Two: The Rest of the Model
 
 [[Step One]] has left us with the basics of a model. We have
-the two-level hierarchy of `FooModel` containing `FooProject`s
+a two-level hierarchy of `FooModel` containing `FooProject`s
 and some resource delta processing for keeping the model up-to-date.
-We will use that basic model as a starting point for this step, where
-we will get to *source elements* and build a complete *code model* for
-the Foo language, from the workspace root level down to variables and
-functions inside Foo files. The complete source code for this step
-of the running example is available in the [Step Two repository]
+We will use it as a starting point for this step, where we will build
+a complete *code model* for the Foo language, from the workspace root level
+down to structural elements inside source files. The complete source code
+for this step of the running example is available in the [Step Two repository]
 (https://github.com/pisv/gethandly.2nd).
 
-Recall that in Handly, every model element is an instance of `IHandle`.
+Recall that every model element in Handly is an instance of `IHandle`.
 This interface is specialized with `ISourceElement` for representing
 source elements, which is further specialized with `ISourceFile` and
 `ISourceConstruct` for representing source files and their structural
@@ -51,8 +50,8 @@ public interface IFooDef
 }
 ```
 
-and then define corresponding implementation classes (in the package
-`org.eclipse.handly.internal.examples.basic.ui.model` of the same bundle):
+with corresponding implementation classes defined in the package
+`org.eclipse.handly.internal.examples.basic.ui.model` of the same bundle:
 
 ```java
 public class FooFile
@@ -74,7 +73,7 @@ public class FooDef
 }
 ```
 
-We now need to complete the implementation by defining the appropriate
+Again, we need to complete the implementation by defining the appropriate
 constructors and overriding the inherited abstract methods. Let's begin
 with the class `FooVar`:
 
@@ -152,14 +151,15 @@ public class FooDef
 }
 ```
 
-As you can see, this class is special in that its constructor takes an
+As you can see, this element is special in that its constructor takes an
 additional parameter, `arity`. While variables can be identified solely by
 their name within the parent Foo file, functions are a different story.
 The name alone is not sufficient to address a Foo function -- we need
-to also state the number of arguments (its *arity*). Therefore, we need
-to make `arity` part of the state of a `FooDef` instance, the handle
-for a Foo function (as you may remember, handles are value objects that
-hold immutable, 'key' information about a model element). We also need
+to also state the number of arguments (its *arity*).
+
+Thus, we need to make `arity` part of the state of a `FooDef` instance,
+the handle for a Foo function (as you may remember, handles are value objects
+that hold immutable, 'key' information about a model element). We also need
 to extend the `equals` method to take `arity` into account (until now
 the inherited implementation of `equals` was always sufficient).
 
@@ -177,7 +177,7 @@ Let's introduce a getter method for `arity` in the `IFooDef` interface:
     int getArity();
 ```
 
-The implementation is trivial:
+with a trivial implementation:
 
 ```java
 // FooDef.java
@@ -189,8 +189,8 @@ The implementation is trivial:
     }
 ```
 
-To have the class `FooFile` compile without errors, we define a constructor
-and override the inherited abstract methods:
+To have the class `FooFile` compile without errors, we need to define
+a constructor and override the inherited abstract methods:
 
 ```java
 /**
@@ -272,8 +272,7 @@ Now we can complete the implementation of the `FooProject` class:
     }
 ```
 
-As you may remember, we intended Foo project to be an *openable* element.
-In other words, it itself (rather than its openable parent, `FooModel`) is
+As you may remember, we intended Foo project to be an *openable* element
 responsible for building its structure. Here we set the currently existing
 Foo files immediately contained within the project's resource as children
 of the `FooProject` element.
@@ -281,12 +280,12 @@ of the `FooProject` element.
 Again, there is no need to use the `newElements` parameter here (recall
 that it is designated for placing handle/body pairs for child elements),
 because the `FooFile` will, in turn, be an openable element. Hence,
-Foo project should only build its own structure, not the structure
-of its children. In that way, the model can be populated with elements
+Foo projects should only build their own structure, not the structure
+of their children. In that way, the model can be populated with elements
 lazily, on demand.
 
 Now that we have a complete implementation for the class `FooProject`,
-we will test it. But let's first define some handy methods in `IFooProject`:
+we can test it. But let's first define some handy methods in `IFooProject`:
 
 ```java
 // IFooProject.java
@@ -315,7 +314,7 @@ we will test it. But let's first define some handy methods in `IFooProject`:
     IFooFile[] getFooFiles() throws CoreException;
 ```
 
-and implement them:
+and implement them as follows:
 
 ```java
 // FooProject.java
@@ -404,7 +403,7 @@ We can expand our test case now:
     }
 ```
 
-You might recollect that we use some test data in the form of a few projects
+You may remember that we use some test data in the form of a few projects
 predefined in the `workspace` folder of the test fragment and materialized
 into the runtime workspace via `setUpProject` calls.
 
@@ -442,7 +441,7 @@ does return `false` as expected, but somehow the deleted file still appears
 among the children of its parent Foo project.
 
 Feels like [[deja vu|Step-One#keeping-the-model-up-to-date]]?
-Remember `FooDeltaProcessor`? Let's make it process *file deltas* too:
+Remember the `FooDeltaProcessor`? Let's make it process *file deltas* too:
 
 ```java
 // FooDeltaProcessor.java
@@ -537,9 +536,10 @@ Let's get back to the `FooFile` and its `buildStructure` and
 The `FooFile` is the last openable element in our model hierarchy.
 Elements inside a source file are *never* openable because the
 source file always builds all of its inner structure in one go
-by parsing the text contents.
+by parsing the text contents, as we shall soon see.
 
-So, we need to implement this couple of methods inherited from `SourceFile`:
+At the moment, we need to implement this couple of methods
+inherited from the `SourceFile`:
 
 ```java
     protected Object createStructuralAst(String source)
@@ -549,14 +549,12 @@ So, we need to implement this couple of methods inherited from `SourceFile`:
         Map<IHandle, Body> newElements, Object ast, String source)
 ```
 
-The method `createStructuralAst` returns a new Abstract Syntax Tree (AST) object
-created from the given source string. The AST can be abridged, i.e. it may
-contain just enough information for computing the structure and properties
-of the source file itself as well as of all of its descendant elements.
-That's why this AST is called *structural*. Handly treats the AST as an opaque
-`Object`-- it just calls `createStructuralAst` whenever necessary and passes
-the return value as a parameter to the `buildStructure` method, which has
-to know how to interpret it.
+The method `createStructuralAst` returns a new Abstract Syntax Tree (AST)
+object created from the given source string. The AST may contain just enough
+information for computing the structure and properties of the source file
+and its descendant elements. That's why it is called *structural*. Handly
+treats the AST as an opaque `Object`-- it just calls `createStructuralAst`
+whenever necessary and passes the result as a parameter to `buildStructure`.
 
 The method `buildStructure` should initialize the given `SourceElementBody`
 based on the given AST and the given source string from which the AST was
@@ -565,11 +563,14 @@ in the given `newElements` map as handle/body pairs.
 
 The class `SourceElementBody` extends the class `Body` and implements the
 interface `ISourceElementInfo`. It holds cached structure and properties for
-a source element. Those structure and properties correlate to a known snapshot
+a source element. Those structure and properties relate to a known snapshot
 of the source file's contents. There are two predefined properties:
-the full text range of the source element, and the text range of the source
-element's identifier (if there is one). Besides, source elements can define
-their own, specific properties to be stored in a `SourceElementBody`.
+
+* the full text range of the source element
+* the text range of the source element's identifier if there is one
+
+Besides, source elements can define their own, specific properties to be
+stored in a `SourceElementBody`.
 
 That was a bit of theory behind these methods. See the [System Overview]
 (http://www.eclipse.org/downloads/download.php?file=/handly/docs/handly-overview.pdf&r=1)
@@ -666,12 +667,15 @@ Xtext-specific:
 ```
 
 If you don't happen to know Xtext, you can safely ignore most of the
-implementation details. To put it in a nutshell, `createStructuralAst`
-returns an EMF `Resource` that contains an object graph representing the AST.
+implementation details.
 
-The method `buildStructure` walks through this object graph and in the
-process creates handles for source elements, initializes the corresponding
-bodies, and places the handle/body pairs into the `newElements` map:
+In this case, `createStructuralAst` returns an EMF `Resource`
+that contains an object graph representing the AST.
+
+The method `buildStructure` walks through this object graph and
+in the process creates handles for source elements, initializes
+the corresponding bodies, and places the handle/body pairs
+into the `newElements` map:
 
 ```java
 // FooFile.java
@@ -796,12 +800,14 @@ class FooFileStructureBuilder
 }
 ```
 
-The base class `StructureHelper` defines a couple of handy methods for
-building the structure of a model element: the method `addChild` remembers
-the given handle as a child of the given parent body and puts the given
-handle/body pair into the `newElements` map (resolving duplicates along the
-way), while the `complete` method completes the given body by setting
-the handles previously remembered by `addChild` as the body's children.
+The base class `StructureHelper` provides a couple of handy methods for
+building the structure of a model element:
+
+* `addChild` remembers the given element as a child of the given parent body
+and puts the element together with the given body into the `newElements` map
+(resolving duplicates along the way)
+* `complete` completes the given body by setting the elements previously
+remembered by `addChild` as the body's children.
 
 Again, even if you can't fully comprehend Xtext-specific details,
 you can well grasp the essence: we just walk the AST and in the process compute
@@ -1117,8 +1123,8 @@ class FooModelCache
 }
 ```
 
-Note that we use an `ElementCache` for Foo files themselves, and a `HashMap`
-for their child elements.
+Note that an `ElementCache` is used for `FooFile`s themselves, whereas
+their child elements are stored in a simple `HashMap`.
 
 The `ElementCache` is quite interesting in that it is an *overflowing
 LRU cache*. It attempts to maintain a size equal or less than its space limit
@@ -1129,7 +1135,7 @@ grow beyond its space limit. Later, it will attempt to shrink back to the
 space limit. This permits to put a constraint on the amount of memory
 consumed by the model.
 
-We don't need to use an LRU cache for Foo files' children (a `HashMap`
+We don't need to use an LRU cache for child elements of Foo files (a `HashMap`
 is sufficient) because these elements always come and go together with
 their parent `FooFile` element.
 
