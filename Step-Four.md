@@ -2,10 +2,10 @@
 
 In [[Step Three]] we have built a Navigator view for our Handly-based model.
 It works fine, except that it cannot display the outline of the editor's
-current contents for a Foo file -- it always uses the file's saved contents.
-In this step we will employ the so-called "working copy" support for the model
+current contents for a Foo file -- it only "sees" the file's saved contents.
+In this step we will employ the so-called working copy support for the model
 and make the view even more alive by responding to changes in the working copy.
-We will also use the resulting infrastructure for building the Outline page for
+We will also use the resulting infrastructure to build the Outline page for
 the Foo editor. The complete source code for this step of the running example is
 available in the [Step Four repository](https://github.com/pisv/gethandly.4th).
 
@@ -13,13 +13,13 @@ In Handly, a source file (as a model element) can be switched into a
 "working copy" mode. Switching to working copy means that the source file's
 structure and properties will no longer correspond to the file's saved contents.
 Instead, those structure and properties will reflect the current contents
-of the source file's editor. To enable this, the editor should be integrated
-with the working copy infrastructure of Handly.
+of the source file's editor. To enable this, the editor ought to be integrated
+with Handly.
 
 Fortunately, our Foo language is Xtext-based, and Handly provides
-out-of-the-box integration of the working copy infrastructure with
-the Xtext editor. To make use of it, we need to make a few bindings
-in the Xtext UI module for the language:
+out-of-the-box integration of the working copy facility with the Xtext editor.
+To make use of it, we need to introduce a few bindings in the Xtext UI module
+for the language:
 
 ```java
 // FooUiModule.java
@@ -54,7 +54,7 @@ in the Xtext UI module for the language:
     }
 ```
 
-The only missing piece is `FooFileFactory`. This class should implement
+The only missing piece is the `FooFileFactory`. This class should implement
 the interface `ISourceFileFactory` and provide the `ISourceFile` element
 corresponding to a given `IFile`:
 
@@ -80,26 +80,26 @@ public class FooFileFactory
 
 That's it. Nothing more is required for Handly/Xtext integration.
 
-Okay, let's test it. Launch runtime Eclipse with the workspace where
+Okay, let's test it. Launch a runtime workbench with the workspace where
 you have imported the `Test002` project in the [[previous step|Step Three]].
-Open the `test.foo` file in the editor. Ensure that you have opened the **Foo
-Navigator** view and expand the `Test002` and `test.foo` elements. Then,
-try declaring a new variable in the Foo editor: `var z;`.
+Open the `test.foo` file with the Xtext editor. Ensure that you have opened
+the **Foo Navigator** and expand the `Test002` and `test.foo` elements in it.
+Then, try declaring a new variable in the editor: `var z;`.
 
-Hmm, our view doesn't get updated. What's wrong with it?
+Hmm, our view doesn't get updated. What's wrong?
 
 Well, we need to notify the view that the working copy's contents changed.
-We will use the existing [[change notification mechanism|Step-Three#model-change-events]]
+We will use our existing [[change notification mechanism|Step-Three#model-change-events]]
 for that. In that way, every `IElementChangeListener` registered with the
 Foo model will get notified about working copy changes. Even better, the
 notifications will describe exactly how the working copy changed
 (i.e. what variables/functions were added/removed etc.)
 
-To do that, we will override the method `getReconcileOperation` in the class
-`FooFile` and return a "notifying" reconcile operation that will use
-the `HandleDeltaBuilder` to build a delta tree between the "pre-reconciled"
-and "post-reconciled" state of the Foo file. It will then fire the delta
-as a `POST_RECONCILE` event:
+To enable notifications about working copy changes, we will override the method
+`getReconcileOperation` in the `FooFile` and return a "notifying" reconcile
+operation that will use the `HandleDeltaBuilder` to build a delta tree
+between the "pre-reconciled" and "post-reconciled" state of the Foo file.
+It will then fire the delta as a `POST_RECONCILE` event:
 
 ```java
 // FooFile.java
@@ -141,12 +141,12 @@ caching the contents of the element when the builder is created. When the
 method `buildDelta` is called, it creates a delta over the cached contents
 and the new contents.
 
-Launch runtime Eclipse again and repeat the test. The new variable will now
-be shown instantly in **Foo Navigator**. Great, now close the editor
-without saving changes. The new variable still shows up. Not good!
+Launch the runtime workbench again and repeat the test. The new variable
+will now be shown instantly in the **Foo Navigator**. Great, now close
+the editor without saving changes. The new variable still shows up. Not good!
 
-To fix that, we need to fire events about switching the Foo file to/from
-working copy mode. For this, we will extend the `SourceFile`'s method
+To fix it, we need to fire events about switching the Foo file to/from
+working copy mode. To do that, we will extend the `SourceFile`'s method
 `workingCopyChanged`:
 
 ```java
@@ -190,13 +190,13 @@ the special case of working copies in the `FooDeltaProcessor`:
     }
 ```
 
-It will work now.
+It will work fine now.
 
 ## Outline View
 
-Now that our model has truly come to life, with all that infrastructure
-in place, it's very easy to create a Foo Outline page using the model,
-so that it would display the same kind of elements as **Foo Navigator**.
+Now that our model has truly come to life with all that infrastructure
+in place, it should be very easy to create a Foo Outline page so that
+it would display the same kind of elements as the **Foo Navigator**.
 Basically, we've got a model and would like to have a number of views of it.
 
 Our `FooOutlinePage` will use the existing content and label providers,
@@ -318,8 +318,20 @@ public class FooOutlinePage
 }
 ```
 
-To make the code compile, we need to import the `org.eclipse.ui.ide` bundle.
-We will bind our Outline page in the Xtext UI module for the language:
+To make this code compile, we need to add `org.eclipse.ui.ide` to the list
+of required bundles of the `org.eclipse.handly.examples.basic.ui` plug-in:
+
+```
+Require-Bundle: org.eclipse.handly.examples.basic,
+ org.eclipse.handly,
+ org.eclipse.handly.xtext.ui,
+ org.eclipse.xtext.ui,
+ org.eclipse.xtext.ui.shared,
+ org.eclipse.ui.navigator,
+ org.eclipse.ui.ide
+```
+
+The Outline page needs to be bound in the Xtext UI module for the language:
 
 ```java
 // FooUiModule.java
@@ -331,13 +343,13 @@ We will bind our Outline page in the Xtext UI module for the language:
     }
 ```
 
-That's it. Pretty simple, isn't? Now you can launch runtime Eclipse and test
-what we've done.
+That's it. Pretty simple, isn't? Launch the runtime workbench and test
+what we have done so far.
 
 Okay, it works, but it needs some *link-with-editor* functionality to become
 really useful. Let's add it.
 
-We will encapsulate it in the inner class `LinkingHelper`:
+We will encapsulate this new functionality in the inner class `LinkingHelper`:
 
 ```java
 // FooOutlinePage.java
@@ -372,7 +384,7 @@ We will encapsulate it in the inner class `LinkingHelper`:
     }
 ```
 
-The `LinkingHelper` will use a couple of utility methods for dealing with
+We are going to need a couple of utility methods for dealing with
 source elements:
 
 ```java
@@ -460,7 +472,8 @@ public class SourceElementUtil
 }
 ```
 
-and will extend the Platform-provided class `OpenAndLinkWithEditorHelper`:
+The class `LinkingHelper` extends the Platform-provided class
+`OpenAndLinkWithEditorHelper`:
 
 
 ```java
@@ -584,14 +597,15 @@ and will extend the Platform-provided class `OpenAndLinkWithEditorHelper`:
 ```
 
 Basically, it listens to selection changes in the editor and updates
-the outline's selection accordingly, and vice versa. What's really
-interesting here is that the class `LinkingHelper` performs its operations
-in terms of generic `ISourceElement`s, it doesn't need to depend on specific
-elements of the Foo model. Hence, it is a good candidate for reuse, and
-could have been generalized and provided as part of a class library,
-thanks to the uniform Handly API.
+the outline's selection accordingly, and vice versa.
 
-Launch runtime Eclipse and test the newly added functionality.
+What's really interesting is that the class `LinkingHelper` performs
+its operations in terms of generic `ISourceElement`s -- it doesn't need
+to depend on specific elements of the Foo model. Hence, it is a good
+candidate for reuse, and could have been generalized and provided
+as part of a class library, thanks to the uniform Handly API.
+
+Launch the runtime workbench and test the newly added functionality.
 Does it work as expected?
 
 ## Closing Words
@@ -606,19 +620,19 @@ resonates with our intent:
 > you a map ... marked with six streets, a restaurant, and a hotel. You won't
 > know everything, but you'll know enough to survive, and enough to learn more.
 
-We hope that this tutorial helped you get started much in a similar way.
+We hope that this tutorial did help you get started much in a similar way.
 You should know enough now to explore Handly and venture out on your own.
 To dive deeper, let us point you to the project's [documentation page]
-(https://projects.eclipse.org/projects/technology.handly/documentation) and,
-of course, [source code](http://git.eclipse.org/c/handly/org.eclipse.handly.git).
+(https://wiki.eclipse.org/Handly) and, of course, [source code]
+(http://git.eclipse.org/c/handly/org.eclipse.handly.git).
 
 If you found an error in the text itself or in a code example, or would like to
 suggest an enhancement, please [raise an issue](https://github.com/pisv/gethandly/issues)
 against the [guide's GitHub repository](https://github.com/pisv/gethandly).
-We also accept pull requests. It's open source, after all! :-)
+We also accept pull requests. It is open source, after all! ;-)
 
 If you could not find the answer to your question or would like to provide
-feedback about this tutorial or Handly in general, please direct it to
-the [project's forum](http://eclipse.org/forums/eclipse.handly).
+feedback about this tutorial or about Handly in general, consider using the
+[project's forum](http://eclipse.org/forums/eclipse.handly).
 
-_Put Handly to work for you!_
+*Put Handly to work for you!*
