@@ -273,15 +273,17 @@ Now we can complete the implementation of the `FooProject` class:
 ```
 
 As you may remember, we intended Foo project to be an *openable* element.
-In other words, it itself (rather than its openable parent, Foo model) is
+In other words, it itself (rather than its openable parent, `FooModel`) is
 responsible for building its structure. Here we set the currently existing
-Foo files immediately contained within the project resource as children
-of the `FooProject` element. Again, there is no need to use the `newElements`
-parameter here (recall that it's designated for placing handle/body pairs
-for child elements), because the Foo file will, in turn, be an openable
-element. Hence, the `FooProject` should only build its own structure,
-not the structure of its children. In that way, the model can be
-populated with its elements lazily, on demand.
+Foo files immediately contained within the project's resource as children
+of the `FooProject` element.
+
+Again, there is no need to use the `newElements` parameter here (recall
+that it is designated for placing handle/body pairs for child elements),
+because the `FooFile` will, in turn, be an openable element. Hence,
+Foo project should only build its own structure, not the structure
+of its children. In that way, the model can be populated with elements
+lazily, on demand.
 
 Now that we have a complete implementation for the class `FooProject`,
 we will test it. But let's first define some handy methods in `IFooProject`:
@@ -378,10 +380,12 @@ We can expand our test case now:
         assertEquals(1, fooProjects.length);
         IFooProject fooProject = fooProjects[0];
         assertEquals("Test001", fooProject.getName());
+        // new code -->
         IFooFile[] fooFiles = fooProject.getFooFiles();
         assertEquals(1, fooFiles.length);
         IFooFile fooFile = fooFiles[0];
         assertEquals("test.foo", fooFile.getName());
+        // <-- new code
 
         IFooProject fooProject2 = fooModel.getFooProject("Test002");
         assertFalse(fooProject2.exists());
@@ -391,18 +395,20 @@ We can expand our test case now:
         assertEquals(2, fooProjects.length);
         assertTrue(Arrays.asList(fooProjects).contains(fooProject));
         assertTrue(Arrays.asList(fooProjects).contains(fooProject2));
+        // new code -->
         IFooFile[] fooFiles2 = fooProject2.getFooFiles();
         assertEquals(1, fooFiles2.length);
         IFooFile fooFile2 = fooFiles2[0];
         assertEquals("test.foo", fooFile2.getName());
+        // <-- new code
     }
 ```
 
-You might recollect that it uses test data in the form of a few projects
+You might recollect that we use some test data in the form of a few projects
 predefined in the `workspace` folder of the test fragment and materialized
-in the run-time workspace via `setUpProject` calls.
+into the runtime workspace via `setUpProject` calls.
 
-Run it. Success! So far, so good.
+Run the test case. Success! So far, so good.
 
 Let's add some more tests:
 
@@ -436,7 +442,7 @@ does return `false` as expected, but somehow the deleted file still appears
 among the children of its parent Foo project.
 
 Feels like [[deja vu|Step-One#keeping-the-model-up-to-date]]?
-Remember `FooDeltaProcessor`? Let's make it process *file deltas*:
+Remember `FooDeltaProcessor`? Let's make it process *file deltas* too:
 
 ```java
 // FooDeltaProcessor.java
@@ -517,9 +523,9 @@ Remember `FooDeltaProcessor`? Let's make it process *file deltas*:
     }
 ```
 
-If a Foo file has been added or removed, we update the list of children in
-its parent's body. If a Foo file has changed, we evict its (stale) body
-from the model cache (along with all descendants).
+In that way, if a Foo file has been added or removed, we update the list
+of children in its parent's body accordingly; if a Foo file has changed,
+we evict its (stale) body from the model cache (along with all descendants).
 
 The test case will now pass.
 
@@ -533,22 +539,22 @@ Elements inside a source file are *never* openable because the
 source file always builds all of its inner structure in one go
 by parsing the text contents.
 
-So, now we need to implement this couple of methods
-inherited from `SourceFile`:
+So, we need to implement this couple of methods inherited from `SourceFile`:
 
 ```java
+    protected Object createStructuralAst(String source)
+        throws CoreException
+
     protected void buildStructure(SourceElementBody body,
         Map<IHandle, Body> newElements, Object ast, String source)
-
-    protected Object createStructuralAst(String source) throws CoreException
 ```
 
 The method `createStructuralAst` returns a new Abstract Syntax Tree (AST) object
-created from the given source string. The AST can be abridged in that it may
+created from the given source string. The AST can be abridged, i.e. it may
 contain just enough information for computing the structure and properties
 of the source file itself as well as of all of its descendant elements.
-That's why it is called *structural* AST. Handly treats the AST as an opaque
-`Object` -- it just calls `createStructuralAst` whenever necessary and passes
+That's why this AST is called *structural*. Handly treats the AST as an opaque
+`Object`-- it just calls `createStructuralAst` whenever necessary and passes
 the return value as a parameter to the `buildStructure` method, which has
 to know how to interpret it.
 
@@ -561,13 +567,13 @@ The class `SourceElementBody` extends the class `Body` and implements the
 interface `ISourceElementInfo`. It holds cached structure and properties for
 a source element. Those structure and properties correlate to a known snapshot
 of the source file's contents. There are two predefined properties:
-the full text range of the source element and the text range of the source
+the full text range of the source element, and the text range of the source
 element's identifier (if there is one). Besides, source elements can define
-their own properties to be stored in a `SourceElementBody`.
+their own, specific properties to be stored in a `SourceElementBody`.
 
-That was a bit of theory behind it. See the [System Overview]
+That was a bit of theory behind these methods. See the [System Overview]
 (http://www.eclipse.org/downloads/download.php?file=/handly/docs/handly-overview.pdf&r=1)
-for more information on the architecture, and Javadocs for a detailed
+for more information on the architecture, and the Javadocs for a detailed
 description of the protocols.
 
 In our case, the Foo language is based on Xtext, so parsing is
@@ -659,13 +665,13 @@ Xtext-specific:
     }
 ```
 
-If you don't know Xtext, you can just ignore the implementation details.
-All you should know is that in this case, `createStructuralAst` returns
-an EMF `Resource` that contains an object graph representing the AST.
+If you don't happen to know Xtext, you can safely ignore most of the
+implementation details. To put it in a nutshell, `createStructuralAst`
+returns an EMF `Resource` that contains an object graph representing the AST.
 
 The method `buildStructure` walks through this object graph and in the
 process creates handles for source elements, initializes the corresponding
-bodies, and places the handle/body pairs in the `newElements` map:
+bodies, and places the handle/body pairs into the `newElements` map:
 
 ```java
 // FooFile.java
@@ -690,7 +696,7 @@ bodies, and places the handle/body pairs in the `newElements` map:
     }
 ```
 
-As you can see, this method delegates all the hard work to a new class,
+As you can see, this method delegates all the hard work to the class
 `FooFileStructureBuilder`, which extends the Handly-provided `StructureHelper`:
 
 ```java
@@ -790,19 +796,19 @@ class FooFileStructureBuilder
 }
 ```
 
-The superclass `StructureHelper` defines a couple of handy methods for
+The base class `StructureHelper` defines a couple of handy methods for
 building the structure of a model element: the method `addChild` remembers
 the given handle as a child of the given parent body and puts the given
 handle/body pair into the `newElements` map (resolving duplicates along the
 way), while the `complete` method completes the given body by setting
 the handles previously remembered by `addChild` as the body's children.
 
-Again, if you can't fully comprehend Xtext-specific details,
-just grasp the essence: we walk the AST and in the process compute
+Again, even if you can't fully comprehend Xtext-specific details,
+you can well grasp the essence: we just walk the AST and in the process compute
 and place into `newElements` a handle/body pair for each structural element
 inside the source file.
 
-Note that the `FooFileStructureBuilder` uses a custom property for storing
+Note how the `FooFileStructureBuilder` uses a custom property for storing
 the parameter names of a Foo function in the element's `SourceElementBody`.
 Here is the property declaration, along with a convenience method
 for obtaining its value:
@@ -891,7 +897,7 @@ We're almost done, except for some additional getter methods in the `IFooFile`:
     IFooDef[] getDefs() throws CoreException;
 ```
 
-implemented as follows:
+which are implemented as follows:
 
 ```java
 // FooFile.java
@@ -982,7 +988,7 @@ predefined in the test fragment.
 
 Amazingly, it works! But how *fast*?
 
-Let's run the body of the `testFooFile` 100,000 times in a loop:
+Let's run the body of the `testFooFile` method 100,000 times in a loop:
 
 ```java
 // FooFileTest.java
@@ -1000,8 +1006,8 @@ It might seem it would never return! (Okay, it took about 5 minutes
 on our machine...) Do you feel it could do better than this?
 
 If you set a breakpoint in the `FooFile.createStructuralAst` method and
-re-run the `FooFileTest` under debugger, you will see that every request
-for the Foo file's body leads to re-building the whole structure
+rerun the `FooFileTest` under debugger, you will see that every request
+for the Foo file's body leads to rebuilding the whole structure
 of the source file and hence, to re-parsing. It is called six (!) times
 within each iteration of the loop -- once for each non-handle-only
 method call.
@@ -1017,20 +1023,26 @@ class FooModelCache
     implements IBodyCache
 {
     private static final int DEFAULT_PROJECT_SIZE = 5;
+    // new code -->
     private static final int DEFAULT_FILE_SIZE = 100;
     private static final int DEFAULT_CHILDREN_SIZE = DEFAULT_FILE_SIZE * 20;
         // average 20 children per file
+    // <-- new code
 
     private Body modelBody; // Foo model element's body
     private HashMap<IHandle, Body> projectCache; // Foo projects
+    // new code -->
     private ElementCache fileCache; // Foo files
     private HashMap<IHandle, Body> childrenCache; // children of Foo files
+    // <-- new code
 
     public FooModelCache()
     {
         projectCache = new HashMap<IHandle, Body>(DEFAULT_PROJECT_SIZE);
+        // new code -->
         fileCache = new ElementCache(DEFAULT_FILE_SIZE);
         childrenCache = new HashMap<IHandle, Body>(DEFAULT_CHILDREN_SIZE);
+        // <-- new code
     }
 
     @Override
@@ -1040,10 +1052,12 @@ class FooModelCache
             return modelBody;
         else if (handle instanceof IFooProject)
             return projectCache.get(handle);
+        // new code -->
         else if (handle instanceof IFooFile)
             return fileCache.get(handle);
         else
             return childrenCache.get(handle);
+        // <-- new code
     }
 
     @Override
@@ -1053,10 +1067,12 @@ class FooModelCache
             return modelBody;
         else if (handle instanceof IFooProject)
             return projectCache.get(handle);
+        // new code -->
         else if (handle instanceof IFooFile)
             return fileCache.peek(handle);
         else
             return childrenCache.get(handle);
+        // <-- new code
     }
 
     @Override
@@ -1067,12 +1083,16 @@ class FooModelCache
         else if (handle instanceof IFooProject)
         {
             projectCache.put(handle, body);
+            // new code -->
             fileCache.ensureSpaceLimit(body, handle);
+            // <-- new code
         }
+        // new code -->
         else if (handle instanceof IFooFile)
             fileCache.put(handle, body);
         else
             childrenCache.put(handle, body);
+        // <-- new code
     }
 
     @Override
@@ -1083,12 +1103,16 @@ class FooModelCache
         else if (handle instanceof IFooProject)
         {
             projectCache.remove(handle);
+            // new code -->
             fileCache.resetSpaceLimit(DEFAULT_FILE_SIZE, handle);
+            // <-- new code
         }
+        // new code -->
         else if (handle instanceof IFooFile)
             fileCache.remove(handle);
         else
             childrenCache.remove(handle);
+        // <-- new code
     }
 }
 ```
@@ -1102,21 +1126,21 @@ by removing the least recently used elements. The cache will remove elements
 which successfully close and all elements which are explicitly removed.
 If the cache cannot remove enough old elements to add new elements, it will
 grow beyond its space limit. Later, it will attempt to shrink back to the
-space limit. In that way, we can put a constraint on the amount of memory
-consumed by our model.
+space limit. This permits to put a constraint on the amount of memory
+consumed by the model.
 
 We don't need to use an LRU cache for Foo files' children (a `HashMap`
-is sufficient) because they are not *openable* and always come and go
-together with their parent `FooFile` element.
+is sufficient) because these elements always come and go together with
+their parent `FooFile` element.
 
-If you re-run this simple performance test now, it will take dramatically
+If you rerun this simple performance test now, it will take dramatically
 less time (about 2 seconds on our machine). *2 seconds vs 5 minutes*.
 You might call it a difference!
 
 ## Closing Step Two
 
 In this step we dived deeper into Handly and built a complete *code model*
-for our simple programming language, Foo, touching along the way most of the
+for our simple programming language, touching along the way most of the
 areas you will encounter as you implement your own Handly-based models.
 We also wrote some tests to make sure our model works correctly
 and with good performance.
