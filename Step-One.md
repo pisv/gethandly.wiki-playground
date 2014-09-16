@@ -161,7 +161,8 @@ public class FooProject
 ```
  
 In this case, `validateExistence` throws a `CoreException` when the underlying
-workspace project is not accessible or doesn't have the Foo nature.
+workspace project is not accessible or doesn't have the Foo nature, which is
+yet to be defined.
 
 If you need a reference on what exactly a project nature is, the Eclipse Corner
 article [Project Builders and Natures](https://www.eclipse.org/articles/Article-Builders/builders.html)
@@ -187,7 +188,7 @@ via an extension point:
    </extension>
 ```
 
-with their run-time behavior provided by a class implementing `IProjectNature`:
+with their runtime behavior provided by a class implementing `IProjectNature`:
 
 ```java
 // package org.eclipse.handly.internal.examples.basic.ui.model
@@ -231,14 +232,14 @@ public class FooProjectNature
 
 That's it for the Foo nature.
 
-At this time, we still need to implement two more abstract methods for
-our model elements: `buildStructure` and `getHandleManager`. Those methods
-are central to the implementation of *handle/body idiom* in Handly.
+We still need to implement two more abstract methods for our model elements:
+`buildStructure` and `getHandleManager`. Those methods are central to
+implementation of the *handle/body idiom* in Handly.
 
-The basic idea behind the handle/body idiom as implemented in Handly
-is that mutable structure and properties of a model element are stored
-separately in an internal `Body`, while the handle holds immutable, 'key'
-information (recall that handles are value objects).
+The basic idea behind it is that mutable structure and properties
+of a model element are stored separately in an internal `Body`,
+while the handle holds immutable, 'key' information
+(recall that handles are value objects).
 
 The method `buildStructure` must initialize the given `Body` based on
 the element's current contents. In this case, we set the currently open
@@ -511,7 +512,7 @@ public interface IFooProject
 }
 ```
 
-and implement them:
+which are implemented as follows:
 
 ```java
 // FooModel.java
@@ -601,8 +602,7 @@ That's all for now. Let's test it!
 We provide a test fragment called `org.eclipse.handly.examples.basic.ui.tests`
 in the [Step Zero repository](https://github.com/pisv/gethandly.0).
 It is probably a good idea to check this fragment out into your workspace
-if you have not done so already and use it as a starting point for writing
-tests for the model.
+and use it as a starting point for writing tests for the model.
 
 The `workspace` folder of this fragment contains some set-up data for tests --
 just a few predefined projects for you to run tests against. To use this data,
