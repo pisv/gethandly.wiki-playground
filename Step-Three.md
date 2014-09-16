@@ -1,18 +1,14 @@
 # Step Three: Viewing the Model
 
 In [[Step Two]] we have built a complete code model for
-our programming language, Foo. Now, let's put it into real use!
-In this step we will display the model in a kind of Navigator view.
-It should also serve as a starting point for our next step,
-where we will apply the working copy to bring our model and view
-even further to life. The complete source code for this step of
-the running example is available in the [Step Three repository]
-(https://github.com/pisv/gethandly.3rd).
+our programming language, Foo. Now it's time to put it to use.
+In this step we will build a Foo Navigator view observing the model.
+The complete source code for this step of the running example is available
+in the [Step Three repository](https://github.com/pisv/gethandly.3rd).
 
-We'll start building the view in a moment, but first, some preliminary
-work needs to be done.
-
-For convenience, we will introduce a marker interface `IFooElement`:
+Before we start building the view, some preliminary work needs to be done.
+Let's introduce a marker interface `IFooElement` for all elements provided
+by the Foo model:
 
 ```java
 // package org.eclipse.handly.examples.basic.ui.model
@@ -21,11 +17,7 @@ public interface IFooElement
     extends IHandle
 {
 }
-```
 
-for all elements provided by the Foo model:
-
-```java
 public interface IFooModel
     extends IHandle, IFooElement
 
@@ -76,8 +68,7 @@ We will also define a new helper method in the `FooModelCore`:
     }
 ```
 
-Now we can proceed with building a Navigator view for our model.
-
+We can now proceed with building a Navigator view for our model.
 First, let's add the Common Navigator Framework a.k.a. CNF
 (`org.eclipse.ui.navigator`) to the list of required bundles
 of the `org.eclipse.handly.examples.basic.ui` plug-in:
@@ -99,7 +90,7 @@ via a number of extension points:
          point="org.eclipse.ui.views">
       <category
             id="org.eclipse.handly.examples.basic.ui.fooCategory"
-            name="Foo (Handly Examples)">
+            name="Foo">
       </category>
       <view
             id="org.eclipse.handly.examples.basic.ui.views.fooNavigator"
@@ -158,8 +149,8 @@ via a number of extension points:
 
 The CNF-specific details are largely irrelevant to our discussion.
 In a nutshell, we have defined a view named **Foo Navigator**
-in the category **Foo (Handly Examples)**. The view will be implemented
-by the class `FooNavigator`:
+in the category **Foo**. The view will be implemented by the class
+`FooNavigator`:
 
 ```java
 // package org.eclipse.handly.internal.examples.basic.ui.navigator
@@ -308,8 +299,6 @@ public class FooLabelProvider
 }
 ```
 
-That should be pretty straightforward.
-
 The missing piece is a couple of icons in the plug-in image registry:
 
 ```java
@@ -358,7 +347,7 @@ public class Activator
 
 The code will now compile without errors.
 
-Let's test what we've done so far. Launch a runtime workbench and open
+Let's test what we have done so far. Launch a runtime workbench and open
 the **Resource** perspective. Import the `Test002` project from the
 [Step Three repository](https://github.com/pisv/gethandly.3rd).
 (*Hint:* Use **File/Import.../General/Existing Projects into Workspace**,
@@ -366,33 +355,33 @@ select the `workspace` folder of the project `org.eclipse.handly.examples.basic.
 in a local clone of the git repository, choose the option **Copy projects
 into workspace** and select `Test002`.)
 
-It's time to open the **Foo Navigator** view (**Window/Show View/Other...**).
-You should see the `Test002` project in it. Now you can browse all elements
+Open the **Foo Navigator** view (**Window/Show View/Other...**).
+You should see the `Test002` project. You can browse all elements
 of the Foo model by expanding tree items in the view. So far, so good.
 
-You might have a temptation to create a new Foo file in the `Test002` project.
-Don't resist it! (To do that, use **File/New/File**, select `Test002` as the
-parent folder and enter a file name -- it must end with `.foo`)
+Now create a new Foo file in the `Test002` project. (Use **File/New/File**,
+select `Test002` as the parent folder and enter a file name -- it must end
+with `.foo`)
 
-Okay, but where is the new file? As you can see, it is shown in the **Project
-Explorer**, but is absent in our view. To make it appear in the **Foo
-Navigator**, you would have to restart the runtime workbench.
+And here comes a problem. The new file is shown in the **Project Explorer**,
+but is absent in our view. To make it appear in the **Foo Navigator**,
+you would have to restart the runtime workbench.
 
-Apparently, the model changed, but the view wasn't listening. But what
-kind of change events our view should actually listen to?
+Apparently, the model changed, but the view wasn't listening. This raises
+a question: What kind of change events our view should actually listen to?
 
-In [[Step One|Step-One#keeping-the-model-up-to-date]] we implemented
-the `FooDeltaProcessor` that listened to resource change events in the
-workspace to keep the model up-to-date. But were our view a resource
-change listener, we would need to duplicate much of the logic of the
-`FooDeltaProcessor` for analysis of whether and how the underlying resouce
-changes affect the Foo model. We would need to duplicate it in this view,
-and also in every other view of the model. Besides, as we will see in
-[[Step Four]], resource change events don't describe changes in working copies
-(source files being edited).
+In [[Step One|Step-One#keeping-the-model-up-to-date]] we implemented the
+`FooDeltaProcessor` that listened to workspace resource change notifications
+to keep the model up-to-date. But if our view was a resource change listener,
+we would need to duplicate much of the logic of the `FooDeltaProcessor`
+to determine whether and how the underlying resource changes affect
+the Foo model and, hence, our view. Every view of the model would contain
+this duplicated logic. Besides, as we shall see in [[Step Four]],
+resource change events can't describe changes in working copies
+(the source files being edited).
 
-It would be nice if our view could listen to a kind of change events
-described in terms of model elements rather than workspace resources.
+It would be nice if clients like our view could be given notification
+of exactly what elements of the Foo model changed and how they changed.
 This brings us to the next section.
 
 ## Model Change Events
@@ -423,8 +412,8 @@ The object passed to an element change listener is an instance of
 `IElementChangeEvent`. The most important bits of information in the event 
 are the event type, and the handle delta. The event type is simply an integer
 that describes what kind of event occurred. We will focus on `POST_CHANGE`
-event type here, i.e. those events that occur during corresponding `POST_CHANGE`
-resource change notifications.
+event type here, i.e. on those events that occur during corresponding
+`POST_CHANGE` resource change notifications.
 
 The handle delta is actually the root of a tree of `IHandleDelta` objects.
 The tree of deltas is structured much like the tree of `IHandle` objects
@@ -620,8 +609,7 @@ Now we can complete the implementation of the `FooModelManager`:
     }
 ```
 
-So far, so good, but what about the actual delta translation?
-
+But what about the actual delta translation?
 Let's start with writing some tests:
 
 ```java
@@ -895,13 +883,13 @@ We spare you the details because they add nothing substantial to discussion.
 If you are interested, you can study yourself the complete implementation
 of the `FooDeltaProcessor` and the corresponding `FooModelNotificationTest`.
 
-Run the test again. Success!
+The test case will now pass.
 
-Great, now we need to have our view respond to Foo element changes
-for keeping its contents up-to-date with the model.
+Great, now we need to have our view respond to model change notifications
+for keeping the view contents up-to-date with the model.
 
-Let's make the `FooNavigator` implement `IElementChangeListener`,
-subscribe to notifications of element changes with the Foo model,
+Let's make the `FooNavigator` class implement the `IElementChangeListener`,
+subscribe to element change events with the Foo model,
 and do a full refresh whenever there are any changes:
 
 ```java
@@ -968,8 +956,8 @@ public class FooNavigator
  }
 ```
 
-It looks deceptively simple, but were it production code, we would anylize
-the Foo element delta and update the view's contents incrementally.
+It looks deceptively simple, but if it was production code, we would analyze
+the Foo element delta and update the view contents incrementally.
 We leave it as an exercise to the reader.
 
 Launch the runtime workbench, expand the `Test002` project in the **Foo
@@ -978,7 +966,7 @@ The new file will now be shown instantly in the view.
 
 ## Closing Step Three
 
-In this step we have displayed the Foo model in a Navigator-like view
+In this step we have displayed the Foo model in a Navigator view
 and made it alive by firing model change notifications that the view
 can subscribe and respond to.
 
