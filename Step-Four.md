@@ -3,17 +3,17 @@
 In [[Step Three]] we have built a Navigator view for our Handly-based model.
 It works fine, except that it cannot display the outline of the editor's
 current contents for a Foo file -- it only "sees" the file's saved contents.
-In this step we will employ the so-called working copy support for the model
-and make the view even more alive by responding to changes in the working copy.
-We will also use the resulting infrastructure to build the Outline page for
-the Foo editor. The complete source code for this step of the running example is
-available in the [Step Four repository](https://github.com/pisv/gethandly.4th).
+In this step we will employ the so-called "working copy" to make the view
+even more alive. We will also use the resulting infrastructure to build
+the Outline page for the Foo editor -- another view of our model.
+The complete source code for this step of the running example is available
+in the [Step Four repository](https://github.com/pisv/gethandly.4th).
 
 In Handly, a source file (as a model element) can be switched into a
-"working copy" mode. Switching to working copy means that the source file's
+*working copy* mode. Switching to working copy means that the source file's
 structure and properties will no longer correspond to the file's saved contents.
 Instead, those structure and properties will reflect the current contents
-of the source file's editor. To enable this, the editor ought to be integrated
+of the source file's editor. To enable this, the editor needs to be integrated
 with Handly.
 
 Fortunately, our Foo language is Xtext-based, and Handly provides
@@ -55,8 +55,8 @@ for the language:
 ```
 
 The only missing piece is the `FooFileFactory`. This class should implement
-the interface `ISourceFileFactory` and provide the `ISourceFile` element
-corresponding to a given `IFile`:
+the `ISourceFileFactory` and provide the `ISourceFile` element corresponding
+to a given `IFile`:
 
 ```java
 // package org.eclipse.handly.internal.examples.basic.ui.model
@@ -78,17 +78,17 @@ public class FooFileFactory
 }
 ```
 
-That's it. Nothing more is required for Handly/Xtext integration.
+That's it. Nothing more is required to enable Handly/Xtext integration.
 
-Okay, let's test it. Launch a runtime workbench with the workspace where
+Let's test it. Launch a runtime workbench with the workspace where
 you have imported the `Test002` project in the [[previous step|Step Three]].
-Open the `test.foo` file with the Xtext editor. Ensure that you have opened
-the **Foo Navigator** and expand the `Test002` and `test.foo` elements in it.
-Then, try declaring a new variable in the editor: `var z;`.
+Ensure that you have opened the **Foo Navigator** and expand the `Test002`
+and `test.foo` elements in the view. Then, open the `test.foo` file
+with the Xtext editor and try declaring a new variable: `var z;`.
 
-Hmm, our view doesn't get updated. What's wrong?
+Hmm, our view didn't get updated. What's wrong?
 
-Well, we need to notify the view that the working copy's contents changed.
+Well, we need to notify the view about changes in the working copy.
 We will use our existing [[change notification mechanism|Step-Three#model-change-events]]
 for that. In that way, every `IElementChangeListener` registered with the
 Foo model will get notified about working copy changes. Even better, the
@@ -96,9 +96,9 @@ notifications will describe exactly how the working copy changed
 (i.e. what variables/functions were added/removed etc.)
 
 To enable notifications about working copy changes, we will override the method
-`getReconcileOperation` in the `FooFile` and return a "notifying" reconcile
-operation that will use the `HandleDeltaBuilder` to build a delta tree
-between the "pre-reconciled" and "post-reconciled" state of the Foo file.
+`getReconcileOperation()` in the class `FooFile` and return a *notifying*
+reconcile operation that will use a `HandleDeltaBuilder` to build a delta tree
+between the "pre-reconciled" and "post-reconciled" state of the working copy.
 It will then fire the delta as a `POST_RECONCILE` event:
 
 ```java
@@ -138,16 +138,17 @@ The Handly-provided class `HandleDeltaBuilder` builds a delta tree between
 the version of a model element at the time the builder was created and
 the current version of the element. It performs this operation by locally
 caching the contents of the element when the builder is created. When the
-method `buildDelta` is called, it creates a delta over the cached contents
+method `buildDelta()` is called, it creates a delta over the cached contents
 and the new contents.
 
-Launch the runtime workbench again and repeat the test. The new variable
-will now be shown instantly in the **Foo Navigator**. Great, now close
-the editor without saving changes. The new variable still shows up. Not good!
+Launch the runtime workbench and repeat the test. Declare a new variable
+and it will now be shown instantly in the **Foo Navigator**. Great,
+now close the editor without saving changes. The new variable will
+still be displayed in the view. Not good!
 
-To fix it, we need to fire events about switching the Foo file to/from
+To fix it, we need to fire events about switching a Foo file to/from the
 working copy mode. To do that, we will extend the `SourceFile`'s method
-`workingCopyChanged`:
+`workingCopyChanged()`:
 
 ```java
 
@@ -169,7 +170,7 @@ working copy mode. To do that, we will extend the `SourceFile`'s method
 ```
 
 This should be self-explanatory. And while we are here, let's also handle
-the special case of working copies in the `FooDeltaProcessor`:
+the working copy as a special case in the `FooDeltaProcessor`:
 
 ```java
 // FooDeltaProcessor.java
@@ -190,7 +191,7 @@ the special case of working copies in the `FooDeltaProcessor`:
     }
 ```
 
-It will work fine now.
+Everything should work fine now.
 
 ## Outline View
 
@@ -199,9 +200,9 @@ in place, it should be very easy to create a Foo Outline page so that
 it would display the same kind of elements as the **Foo Navigator**.
 Basically, we've got a model and would like to have a number of views of it.
 
-Our `FooOutlinePage` will use the existing content and label providers,
-and will refresh itself when a Foo model change affects its input. It will
-also update the input whenever the corresponding editor input changes.
+The `FooOutlinePage` will use existing content and label providers, and
+will refresh itself when its contents is affected by a change in the Foo model.
+It will also reset its input when the corresponding editor input changes.
 
 ```java
 // package org.eclipse.handly.internal.examples.basic.ui.outline
@@ -318,7 +319,7 @@ public class FooOutlinePage
 }
 ```
 
-To make this code compile, we need to add `org.eclipse.ui.ide` to the list
+For this code to compile, we have to add `org.eclipse.ui.ide` to the list
 of required bundles of the `org.eclipse.handly.examples.basic.ui` plug-in:
 
 ```
@@ -343,8 +344,7 @@ The Outline page needs to be bound in the Xtext UI module for the language:
     }
 ```
 
-That's it. Pretty simple, isn't? Launch the runtime workbench and test
-what we have done so far.
+Launch the runtime workbench and test what we have done so far.
 
 Okay, it works, but it needs some *link-with-editor* functionality to become
 really useful. Let's add it.
@@ -472,7 +472,7 @@ public class SourceElementUtil
 }
 ```
 
-The class `LinkingHelper` extends the Platform-provided class
+The class `LinkingHelper` will extend the Platform-provided class
 `OpenAndLinkWithEditorHelper`:
 
 
@@ -599,14 +599,13 @@ The class `LinkingHelper` extends the Platform-provided class
 Basically, it listens to selection changes in the editor and updates
 the outline's selection accordingly, and vice versa.
 
-What's really interesting is that the class `LinkingHelper` performs
+What's really interesting here is that the class `LinkingHelper` performs
 its operations in terms of generic `ISourceElement`s -- it doesn't need
 to depend on specific elements of the Foo model. Hence, it is a good
 candidate for reuse, and could have been generalized and provided
 as part of a class library, thanks to the uniform Handly API.
 
 Launch the runtime workbench and test the newly added functionality.
-Does it work as expected?
 
 ## Closing Words
 
@@ -620,15 +619,16 @@ resonates with our intent:
 > you a map ... marked with six streets, a restaurant, and a hotel. You won't
 > know everything, but you'll know enough to survive, and enough to learn more.
 
-We hope that this tutorial did help you get started much in a similar way.
+We hope that this tutorial did help you get started in a similar way.
 You should know enough now to explore Handly and venture out on your own.
 To dive deeper, let us point you to the project's [documentation page]
 (https://wiki.eclipse.org/Handly) and, of course, [source code]
 (http://git.eclipse.org/c/handly/org.eclipse.handly.git).
 
-If you found an error in the text itself or in a code example, or would like to
-suggest an enhancement, please [raise an issue](https://github.com/pisv/gethandly/issues)
-against the [guide's GitHub repository](https://github.com/pisv/gethandly).
+If you have found an error in the text or in a code example,
+or would like to suggest an enhancement, please [raise an issue]
+(https://github.com/pisv/gethandly/issues) against the
+[guide's repository](https://github.com/pisv/gethandly).
 We also accept pull requests. It is open source, after all! ;-)
 
 If you could not find the answer to your question or would like to provide
