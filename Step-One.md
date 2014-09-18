@@ -4,8 +4,8 @@ In this step we will take you through the entire development process
 of a Handly-based model, but for a little bit of functionality. We will
 implement a basic model with only two levels: `FooModel` containing `FooProject`s.
 While simple, this is going to be a complete, fully functional implementation.
-It shall demonstrate the basic structuring and behavior of a Handly-based model
-and give you a taste of what it is all about. It shall also serve as a
+It will demonstrate the basic structuring and behavior of a Handly-based model
+and give you a taste of what it is all about. It will also serve as a
 starting point for our next step. The complete source code for this step
 of the running example is available in the [Step One repository]
 (https://github.com/pisv/gethandly.1st).
@@ -92,7 +92,8 @@ public class FooModel
 Every model element (a handle) is a value object, so it must be immutable and
 must override equals() and hashCode() appropriately. The basic implementation
 of `equals()` and `hashCode()` provided in the class `Handle` is sufficient in
-many cases.
+many cases -- it uses the parent and name of the element as a basis for
+computation.
 
 Elements that have an underlying resource should return it from the
 `getResource()` method. In this case, the workspace root is returned.
@@ -161,12 +162,11 @@ public class FooProject
 ```
  
 In this case, `validateExistence` throws a `CoreException` when the underlying
-workspace project is not accessible or doesn't have the Foo nature, which is
-yet to be defined.
+project resource is not accessible or doesn't have the Foo nature.
 
 If you need a reference on what exactly a project nature is, the Eclipse Corner
 article [Project Builders and Natures](https://www.eclipse.org/articles/Article-Builders/builders.html)
-authored by John Arthorne is a great resource. Project natures are contributed
+authored by John Arthorne is a great resource. The project nature is contributed
 via an extension point:
 
 ```xml
@@ -188,7 +188,7 @@ via an extension point:
    </extension>
 ```
 
-with their runtime behavior provided by a class implementing `IProjectNature`:
+with its runtime behavior provided by a class implementing `IProjectNature`:
 
 ```java
 // package org.eclipse.handly.internal.examples.basic.ui.model
@@ -230,16 +230,16 @@ public class FooProjectNature
 }
 ```
 
-That's it for the Foo nature.
+The Foo nature doesn't configure any specific builders; the Xtext builder
+will be installed by the required Xtext nature.
 
 We still need to implement two more abstract methods for our model elements:
 `buildStructure` and `getHandleManager`. Those methods are central to
 implementation of the *handle/body idiom* in Handly.
 
-The basic idea behind it is that mutable structure and properties
-of a model element are stored separately in an internal `Body`,
-while the handle holds immutable, 'key' information
-(recall that handles are value objects).
+The basic idea is that mutable structure and properties of a model element
+are stored separately in an internal `Body`, while the handle holds immutable,
+'key' information about the element (recall that handles are value objects).
 
 The method `buildStructure` must initialize the given `Body` based on
 the element's current contents. In this case, we set the currently open
@@ -269,18 +269,17 @@ Foo projects as the children of the `FooModel`:
 ```
 
 We don't use the additional parameter `newElements` here because we intend
-the `FooProject` to be responsible for building its structure, rather than
-have the `FooModel` to also build the structure for its child projects and
-put it (as handle/body pairs) into the `newElements` map.
+the `FooProject` to be responsible for building its structure instead of
+having the `FooModel` to build the structure for its child projects
+and put it (as handle/body pairs) into the `newElements` map.
 
-The `FooProject` and the `FooModel` are said to be *openable* elements because
+The `FooProject` and `FooModel` elements are said to be *openable* because
 they know how to open themselves (build their structure and properties)
 when asked to do so. In that way, the model is populated with its elements
 lazily, on demand. In contrast, elements inside a source file are *never*
 openable because the source file builds all of its inner structure in one go
-by parsing the text contents, as we shall see in the next step.
-See the [System Overview]
-(http://www.eclipse.org/downloads/download.php?file=/handly/docs/handly-overview.pdf&r=1)
+by parsing the text contents, as we shall see in the next step. See the
+[System Overview](http://www.eclipse.org/downloads/download.php?file=/handly/docs/handly-overview.pdf&r=1)
 for more information on the architecture.
 
 The Handly-provided class `HandleManager` manages handle/body relationships
@@ -423,7 +422,7 @@ class FooModelCache
 ```
 
 Now that we have a complete implementation for the class `FooModel`, let's
-test it. But before we can do it, a couple of more items require our attention.
+test it. But before we can do it, two more items require our attention.
 
 First, to have the class `FooProject` compile without errors, we need to
 implement the inherited abstract methods:
@@ -601,7 +600,7 @@ That's all for now. Let's test it!
 
 We provide a test fragment called `org.eclipse.handly.examples.basic.ui.tests`
 in the [Step Zero repository](https://github.com/pisv/gethandly.0).
-It is probably a good idea to check this fragment out into your workspace
+It is probably a good idea to checkout this fragment into your workspace
 and use it as a starting point for writing tests for the model.
 
 The `workspace` folder of this fragment contains some set-up data for tests --
@@ -630,7 +629,7 @@ public class FooModelTest
 ```
 
 The inherited `setUpProject` method creates a new project in the runtime
-workspace by copying the project's content from the `workspace` folder of
+workspace by copying the project's contents from the `workspace` folder of
 the test fragment. It returns the created and opened `IProject`.
 
 Let's write the simplest possible test:
@@ -751,10 +750,11 @@ Foo projects (only `Test001` at the moment) and puts the initialized body in
 the model cache. Then, a new Foo project (`Test002`) is created, but nobody
 in the Foo model takes notice of that and nobody is going to update the
 cached body! So the second call to `getFooProjects` returns the same (stale)
-result: `Test001` only. Clearly, we need *somebody* in the Foo model to take
-care of that by updating the model cache in response to resource changes
-in the workspace. We need a *Delta Processor*. This brings us to the
-next section.
+result: `Test001` only.
+
+Clearly, we need *somebody* in the Foo model to take care of that by updating
+the model cache in response to resource changes in the workspace. We need
+a *Delta Processor*. This brings us to the next section.
 
 ## Keeping the Model Up-to-Date
 
@@ -916,7 +916,7 @@ class FooDeltaProcessor
 The basic idea behind this code is quite simple, actually. In response
 to a resource change event we update the Foo model by either adding/removing
 child elements from the cached bodies or by altogether evicting the
-element's `Body` from the model cache (with all of its children).
+element's `Body` from the model cache (with all descendants).
 
 The test case will now pass.
 
