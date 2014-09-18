@@ -73,7 +73,7 @@ public class FooDef
 }
 ```
 
-Again, we need to complete the implementation by defining the appropriate
+Once more, we need to complete the implementation by defining the appropriate
 constructors and overriding the inherited abstract methods. Let's begin
 with the class `FooVar`:
 
@@ -107,7 +107,9 @@ public class FooVar
 }
 ```
 
-That's all there is to it. Next goes the class `FooDef`:
+That's all there is to it.
+
+Next goes the class `FooDef`:
 
 ```java
 /**
@@ -151,8 +153,8 @@ public class FooDef
 }
 ```
 
-As you can see, this element is special in that its constructor takes an
-additional parameter, `arity`. While variables can be identified solely by
+As you can see, this model element is special in that its constructor takes
+an additional parameter, `arity`. While variables can be identified solely by
 their name within the parent Foo file, functions are a different story.
 The name alone is not sufficient to address a Foo function -- we need
 to also state the number of arguments (its *arity*).
@@ -279,10 +281,8 @@ of the `FooProject` element.
 
 Again, there is no need to use the `newElements` parameter here (recall
 that it is designated for placing handle/body pairs for child elements),
-because the `FooFile` will, in turn, be an openable element. Hence,
-Foo projects should only build their own structure, not the structure
-of their children. In that way, the model can be populated with elements
-lazily, on demand.
+because the `FooFile` will, in turn, be an openable element and will build
+its own structure lazily, on demand.
 
 Now that we have a complete implementation for the class `FooProject`,
 we can test it. But let's first define some handy methods in `IFooProject`:
@@ -314,7 +314,7 @@ we can test it. But let's first define some handy methods in `IFooProject`:
     IFooFile[] getFooFiles() throws CoreException;
 ```
 
-and implement them as follows:
+We'll implement them as follows:
 
 ```java
 // FooProject.java
@@ -538,15 +538,15 @@ Elements inside a source file are *never* openable because the
 source file always builds all of its inner structure in one go
 by parsing the text contents, as we shall soon see.
 
-At the moment, we need to implement this couple of methods
+At the moment, we need to implement this couple of abstract methods
 inherited from the `SourceFile`:
 
 ```java
-    protected Object createStructuralAst(String source)
-        throws CoreException
+protected abstract Object createStructuralAst(String source)
+    throws CoreException;
 
-    protected void buildStructure(SourceElementBody body,
-        Map<IHandle, Body> newElements, Object ast, String source)
+protected abstract void buildStructure(SourceElementBody body,
+    Map<IHandle, Body> newElements, Object ast, String source);
 ```
 
 The method `createStructuralAst` returns a new Abstract Syntax Tree (AST)
@@ -554,7 +554,7 @@ object created from the given source string. The AST may contain just enough
 information for computing the structure and properties of the source file
 and its descendant elements. That's why it is called *structural*. Handly
 treats the AST as an opaque `Object`-- it just calls `createStructuralAst`
-whenever necessary and passes the result as a parameter to `buildStructure`.
+whenever necessary and passes the result to `buildStructure`.
 
 The method `buildStructure` should initialize the given `SourceElementBody`
 based on the given AST and the given source string from which the AST was
@@ -572,7 +572,7 @@ of the source file's contents. There are two predefined properties:
 Besides, source elements can define their own, specific properties to be
 stored in a `SourceElementBody`.
 
-That was a bit of theory behind these methods. See the [System Overview]
+That was a bit of theory behind these two methods. See the [System Overview]
 (http://www.eclipse.org/downloads/download.php?file=/handly/docs/handly-overview.pdf&r=1)
 for more information on the architecture, and the Javadocs for a detailed
 description of the protocols.
@@ -667,10 +667,9 @@ Xtext-specific:
 ```
 
 If you don't happen to know Xtext, you can safely ignore most of the
-implementation details.
-
-In this case, `createStructuralAst` returns an EMF `Resource`
-that contains an object graph representing the AST.
+implementation details. They needn't concern us here; suffice to know
+that `createStructuralAst` returns an EMF `Resource` that contains
+an object graph representing the AST.
 
 The method `buildStructure` walks through this object graph and
 in the process creates handles for source elements, initializes
@@ -801,17 +800,15 @@ class FooFileStructureBuilder
 ```
 
 The base class `StructureHelper` provides a couple of handy methods for
-building the structure of a model element:
+building the structure of a model element: `addChild` remembers the given
+element as a child of the given parent body and puts the element together
+with the given body into the `newElements` map (resolving duplicates
+along the way), while `complete` completes the given body by setting
+the elements previously remembered by `addChild` as the body's children.
 
-* `addChild` remembers the given element as a child of the given parent body
-and puts the element together with the given body into the `newElements` map
-(resolving duplicates along the way)
-* `complete` completes the given body by setting the elements previously
-remembered by `addChild` as the body's children.
-
-Again, even if you can't fully comprehend Xtext-specific details,
-you can well grasp the essence: we just walk the AST and in the process compute
-and place into `newElements` a handle/body pair for each structural element
+Again, even if you can't fully comprehend Xtext-specific details, you can
+well grasp the essence: we just walk the AST and in the process compute and
+place into the `newElements` a handle/body pair for each structural element
 inside the source file.
 
 Note how the `FooFileStructureBuilder` uses a custom property for storing
@@ -1132,7 +1129,7 @@ by removing the least recently used elements. The cache will remove elements
 which successfully close and all elements which are explicitly removed.
 If the cache cannot remove enough old elements to add new elements, it will
 grow beyond its space limit. Later, it will attempt to shrink back to the
-space limit. This permits to put a constraint on the amount of memory
+space limit. This cache permits to put a constraint on the amount of memory
 consumed by the model.
 
 We don't need to use an LRU cache for child elements of Foo files (a `HashMap`
@@ -1151,5 +1148,5 @@ areas you will encounter as you implement your own Handly-based models.
 We also wrote some tests to make sure our model works correctly
 and with good performance.
 
-We will put this model into use and add even more functionality expected
+We will put this model to use and add even more functionality expected
 of a code model in our next step: [[Viewing the Model|Step Three]].
