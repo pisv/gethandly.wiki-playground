@@ -380,9 +380,9 @@ this duplicated logic. Besides, as we shall see in [[Step Four]],
 resource change events can't describe changes in working copies
 (the source files being edited).
 
-It would be nice if clients like our view could be given notification
-of exactly what elements of the Foo model changed and how they changed.
-This brings us to the next section.
+It would be nice if clients like our view could be notified of exactly what
+elements of the Foo model changed and how they changed. This brings us to
+the next section.
 
 ## Model Change Events
 
@@ -390,12 +390,12 @@ Handly provides an infrastructure for dealing with *change notifications*
 in Handly-based models. It is largely similar in design to corresponding
 facilities of the JDT Java model and the Eclipse Platform resource model,
 so there is a good chance that you might be familiar with the core concepts.
-If not, the eclipse.org article [How You've Changed!](https://www.eclipse.org/articles/Article-Resource-deltas/resource-deltas.html)
+(If not, the eclipse.org article [How You've Changed!](https://www.eclipse.org/articles/Article-Resource-deltas/resource-deltas.html)
 written by John Arthorne could be a great introduction to the problematics
-of efficiently notifying clients of changes in a handle-based model.
+of efficiently notifying clients of changes in a handle-based model.)
 A detailed description of the infrastructure would take an article of its own,
-but hopefully the Javadocs can provide the necessary details on the protocols
-involved, and here we will give you a taste of what it is about.
+but hopefully the Javadocs can provide the necessary details of the protocols
+involved, and here we will give you a taste of what it's all about.
 
 The primary interfaces are `IElementChangeListener`, `IElementChangeEvent`,
 and `IHandleDelta`. There are also some useful implementations, namely
@@ -432,7 +432,7 @@ Each delta object provides the following information:
 * Deltas for any added, removed, or changed children.
 * A summary of what markers changed on the element's corresponding resource.
 * A summary of changes to children of the element's corresponding resource
-that cannot be described in terms of handle deltas.
+that cannot be described in terms of model changes.
 
 In the case where an element has moved, the `ADDED` delta for the destination
 also supplies the source element, and the `REMOVED` delta for the source
@@ -871,6 +871,8 @@ That's it. The method `processChangedFile` didn't actually change (it is
 the aforementioned `contentChanged` method that did), but we listed it
 for completeness.
 
+The test case will now pass.
+
 Well, in this case it was quite simple, but for models with
 a more complicated mapping to workspace resources the implementation
 would be much more elaborate.
@@ -883,14 +885,12 @@ We spare you the details because they add nothing substantial to discussion.
 If you are interested, you can study yourself the complete implementation
 of the `FooDeltaProcessor` and the corresponding `FooModelNotificationTest`.
 
-The test case will now pass.
-
 Great, now we need to have our view respond to model change notifications
-for keeping the view contents up-to-date with the model.
+to keep the view up-to-date with the model.
 
 Let's make the `FooNavigator` class implement the `IElementChangeListener`,
-subscribe to element change events with the Foo model,
-and do a full refresh whenever there are any changes:
+subscribe to element change events with the Foo model, and do a full refresh
+when there are any changes in the model:
 
 ```java
 // package org.eclipse.handly.internal.examples.basic.ui.navigator
@@ -957,8 +957,8 @@ public class FooNavigator
 ```
 
 It looks deceptively simple, but if it was production code, we would analyze
-the Foo element delta and update the view contents incrementally.
-We leave it as an exercise to the reader.
+the Foo element delta and update the view incrementally. We leave it
+as an exercise to the reader.
 
 Launch the runtime workbench, expand the `Test002` project in the **Foo
 Navigator**, and create a `.foo` file in the project (**File/New/File**).
@@ -971,7 +971,7 @@ and made it alive by firing model change notifications that the view
 can subscribe and respond to.
 
 That's great, but if you open a Foo file in the editor and begin changing
-its structure (for example, by adding new variables and functions), you will
-soon see that our view shows the outline of the file's saved contents
+its structure (for example, by adding new variables and functions), you
+will soon see that our view shows the outline of the file's saved contents
 rather than that of the editor's current contents. We are going to fix it
 in the next step: [[Working Copy|Step Four]].
