@@ -8,4 +8,6 @@
 * [[Step Three: Viewing the Model|Step Three]]
   * [[Model Change Events|Step-Three#model-change-events]]
 * [[Step Four: Working Copy|Step Four]]
+  * [[Other Editors|Step-Four#other-editors]]
   * [[Outline View|Step-Four#outline-view]]
+* [[Closing Words|Step-Four#closing-words]]
