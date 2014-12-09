@@ -146,6 +146,15 @@ public class FooDef
     }
 
     @Override
+    public int hashCode()
+    {
+        final int prime = 31;
+        int result = super.hashCode();
+        result = prime * result + arity;
+        return result;
+    }
+
+    @Override
     protected HandleManager getHandleManager()
     {
         return FooModelManager.INSTANCE.getHandleManager();
@@ -162,8 +171,9 @@ to also state the number of arguments (its *arity*).
 Thus, we need to make `arity` part of the state of a `FooDef` instance,
 the handle for a Foo function (as you may remember, handles are value objects
 that hold immutable, 'key' information about a model element). We also need
-to extend the `equals` method to take `arity` into account (until now
-the inherited implementation of `equals` was always sufficient).
+to extend the `equals` and `hashCode` methods to take `arity` into account
+(until now the inherited implementation of `equals` and `hashCode` was always
+sufficient).
 
 Let's introduce a getter method for `arity` in the `IFooDef` interface:
 
