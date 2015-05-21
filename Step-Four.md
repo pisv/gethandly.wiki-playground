@@ -616,6 +616,46 @@ as part of a class library, thanks to the uniform Handly API.
 
 Launch the runtime workbench and test the newly added functionality.
 
+_We have implemented a basic outline page from scratch. Since Handly 0.3,
+you can use the Handly Outline framework. As a teaser, here is the corresponding
+implementation with the framework -- this class is both richer in ability and
+less in size:_
+
+```java
+public class FooOutlinePage2
+    extends HandlyXtextOutlinePage
+{
+    @Inject
+    private FooContentProvider contentProvider;
+    @Inject
+    private FooLabelProvider labelProvider;
+
+    @Override
+    protected ITreeContentProvider getContentProvider()
+    {
+        return contentProvider;
+    }
+
+    @Override
+    protected IBaseLabelProvider getLabelProvider()
+    {
+        return labelProvider;
+    }
+
+    @Override
+    protected void addElementChangeListener(IElementChangeListener listener)
+    {
+        FooModelCore.getFooModel().addElementChangeListener(listener);
+    }
+
+    @Override
+    protected void removeElementChangeListener(IElementChangeListener listener)
+    {
+        FooModelCore.getFooModel().removeElementChangeListener(listener);
+    }
+}
+```
+
 ## Closing Words
 
 We would like to close this guide with a quote from the classic book
@@ -632,7 +672,9 @@ We hope that this tutorial did help you get started in a similar way.
 You should know enough now to explore Handly and venture out on your own.
 To dive deeper, let us point you to the project's [documentation page]
 (https://wiki.eclipse.org/Handly) and, of course, [source code]
-(http://git.eclipse.org/c/handly/org.eclipse.handly.git).
+(http://git.eclipse.org/c/handly/org.eclipse.handly.git). In particular,
+do not miss out on a more advanced exemplary implementation that Handly
+provides: example model for Java (`org.eclipse.handly.examples.javamodel`).
 
 If you have found an error in the text or in a code example,
 or would like to suggest an enhancement, please [raise an issue]
