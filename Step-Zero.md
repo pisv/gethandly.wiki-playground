@@ -7,22 +7,13 @@ environment for our running example.
 ## Setting Up Eclipse
 
 To use the examples, **Eclipse IDE for Java and DSL Developers** is required.
-You can find a build for your platform by visiting
-https://www.eclipse.org/downloads/.
+This tutorial assumes Eclipse Mars (4.5.0) release. You can find a build
+for your platform by visiting https://www.eclipse.org/downloads/.
 
-You also need to add **Handly** into the Eclipse installation. This can be
-done by installing all features from a Handly update site. Please visit
+You also need to add **Handly 0.3.x** into the Eclipse installation. This can
+be done by installing all features from Handly update site. Please visit
 the project's [Downloads page](https://projects.eclipse.org/projects/technology.handly/downloads)
-to find the URL of the update site for the latest release of Handly.
-
-**_ATTENTION_**: *Not every version of Xtext is compatible with a particular
-Handly release. Please ensure that you have a right version of Eclipse IDE
-for Java and DSL Developers according to the following table:*
-
-| Handly | Xtext | Eclipse IDE for Java and DSL Developers |
-| ------ | ----- | --------------------------------------- |
-| 0.2.x  | 2.7.x | Luna SR1 (4.4.1) or Luna SR2 (4.4.2)    |
-| 0.1.x  | 2.6.x | Luna (4.4.0) or Kepler SR2 (4.3.2)      |
+to find the URL of the update site for the latest 0.3.x release.
 
 ## Setting Up a Workspace
 
