@@ -196,6 +196,109 @@ the working copy as a special case in the `FooDeltaProcessor`:
 
 Everything should work fine now.
 
+## Other Editors
+
+Besides providing out-of-the-box integration with Xtext editor,
+Handly can also support other editors. In particular, it allows for
+integration with TextFileBuffer-based editors. The following notes are
+intended as forward pointers only; full-blown editor implementation
+is beyond the scope of this tutorial.
+
+To integrate a TextFileBuffer-based editor with working copy functionality,
+you'll need to subclass the editor's document provider from the class
+`SourceFileDocumentProvider` (which extends the `TextFileDocumentProvider`).
+
+For example:
+
+```java
+public class FooFileDocumentProvider
+    extends SourceFileDocumentProvider
+{
+    public FooFileDocumentProvider()
+    {
+        super(new FooElementForEditorInputFactory());
+        // ...
+    }
+
+    // ...
+}
+```
+
+You'll also need to implement a Handly-based reconciler for the editor:
+
+```java
+public class FooReconciler
+    extends HandlyReconciler
+{
+    public FooReconciler(ITextEditor editor, IWorkingCopyManager manager)
+    {
+        super(editor, manager);
+    }
+
+    @Override
+    protected void addElementChangeListener(IElementChangeListener listener)
+    {
+        FooModelCore.getFooModel().addElementChangeListener(listener);
+    }
+
+    @Override
+    protected void removeElementChangeListener(IElementChangeListener listener)
+    {
+        FooModelCore.getFooModel().removeElementChangeListener(listener);
+    }
+}
+````
+
+The reconciler is connected to the editor via a source viewer configuration:
+
+```java
+public class FooSourceViewerConfiguration
+    extends TextSourceViewerConfiguration
+{
+    private final ITextEditor editor;
+    private final IWorkingCopyManager manager;
+
+    public FooSourceViewerConfiguration(IPreferenceStore preferenceStore,
+        ITextEditor editor, IWorkingCopyManager manager)
+    {
+        super(preferenceStore);
+        this.editor = editor;
+        this.manager = manager;
+    }
+
+    @Override
+    public IReconciler getReconciler(ISourceViewer sourceViewer)
+    {
+        if (editor != null && editor.isEditable())
+        {
+            return new FooReconciler(editor, manager);
+        }
+        return null;
+    }
+}
+```
+
+Then, you can wire it all together in the editor:
+
+```java
+public class FooEditor
+    extends AbstractDecoratedTextEditor
+{
+    @Override
+    protected void initializeEditor()
+    {
+        super.initializeEditor();
+        FooFileDocumentProvider provider =
+            Activator.getDefault().getFooFileDocumentProvider();
+        setDocumentProvider(provider);
+        setSourceViewerConfiguration(new FooSourceViewerConfiguration(
+            getPreferenceStore(), this, provider));
+    }
+}
+```
+
+Note that the described functionality is only available since Handly 0.3.
+
 ## Outline View
 
 Now that our model has truly come to life with all that infrastructure
