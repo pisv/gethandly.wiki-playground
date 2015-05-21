@@ -802,7 +802,7 @@ class FooFileStructureBuilder
     private static TextRange toTextRange(ITextRegion region)
     {
         if (region == null || region.equals(ITextRegion.EMPTY_REGION))
-            return TextRange.NULL_RANGE;
+            return null;
         else
             return new TextRange(region.getOffset(), region.getLength());
     }
