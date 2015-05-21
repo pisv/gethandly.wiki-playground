@@ -48,35 +48,38 @@ for the language:
             HandlyXtextEditorCallback.class);
     }
 
-    public Class<? extends ISourceFileFactory> bindISourceFileFactory()
+    public Class<? extends IElementForEditorInputFactory> bindIElementForEditorInputFactory()
     {
-        return FooFileFactory.class;
+        return FooElementForEditorInputFactory.class;
     }
 ```
 
-The only missing piece is the `FooFileFactory`. This class should implement
-the `ISourceFileFactory` and provide the `ISourceFile` element corresponding
-to a given `IFile`:
+The only missing piece is the `FooElementForEditorInputFactory`. This class
+should implement the `IElementForEditorInputFactory` and provide the `IHandle`
+element corresponding to the given `IEditorInput`:
 
 ```java
-// package org.eclipse.handly.internal.examples.basic.ui.model
+// package org.eclipse.handly.internal.examples.basic.ui
 
 /**
- * Implementation of <code>ISourceFileFactory</code> that must be bound 
- * in the Xtext UI module for the language. It's a required component of 
- * Handly/Xtext integration.
- * </p>
+ * Implementation of {@link IElementForEditorInputFactory} to be bound
+ * in the Xtext UI module for the language.
  */
-public class FooFileFactory
-    implements ISourceFileFactory
+public class FooElementForEditorInputFactory
+    implements IElementForEditorInputFactory
 {
     @Override
-    public ISourceFile getSourceFile(IFile file)
+    public IHandle getElement(IEditorInput input)
     {
+        if (input == null)
+            return null;
+        IFile file = (IFile)input.getAdapter(IFile.class);
         return FooModelCore.create(file);
     }
 }
 ```
+For this code to compile, we have to add `org.eclipse.handly.ui` to the list
+of required bundles of the `org.eclipse.handly.examples.basic.ui` plug-in.
 
 That's it. Nothing more is required to enable Handly/Xtext integration.
 
@@ -325,6 +328,7 @@ of required bundles of the `org.eclipse.handly.examples.basic.ui` plug-in:
 ```
 Require-Bundle: org.eclipse.handly.examples.basic,
  org.eclipse.handly,
+ org.eclipse.handly.ui,
  org.eclipse.handly.xtext.ui,
  org.eclipse.xtext.ui,
  org.eclipse.xtext.ui.shared,
@@ -400,35 +404,43 @@ source elements:
 public class SourceElementUtil
 {
     /**
-     * Returns the smallest element within the given source file 
-     * that includes the given source position, or <code>null</code> 
-     * if the given position is not within the text range of this 
-     * source file, or if the source file does not exist or an 
-     * exception occurs while accessing its corresponding resource. 
-     * If no finer grained element is found at the position, 
-     * the source file itself is returned.
+     * Returns the smallest element within the given element that includes
+     * the given source position, or <code>null</code> if the given position
+     * is not within the source range of the given element, or if the
+     * given element does not exist or an exception occurs while accessing
+     * its corresponding resource. If no finer grained element is found
+     * at the position, the given element is returned.
      * <p>
-     * As a side effect, reconciles the given source file.
+     * As a side effect, if the given element is contained in a source file,
+     * the source file will be reconciled.
      * </p>
      *
-     * @param sourceFile the source file (not <code>null</code>)
-     * @param position a source position inside the source file (0-based)
-     * @return the innermost element enclosing the given source position, 
-     *  or <code>null</code> if none (including the source file itself)
+     * @param element a source element (not <code>null</code>)
+     * @param position a source position (0-based)
+     * @return the innermost element enclosing the given source position,
+     *  or <code>null</code> if none (including the given element)
      */
-    public static ISourceElement getSourceElement(ISourceFile sourceFile,
+    public static ISourceElement getElementAt(ISourceElement element,
         int position)
     {
-        try
+        ISourceFile sourceFile;
+        if (element instanceof ISourceFile)
+            sourceFile = (ISourceFile)element;
+        else
+            sourceFile = element.getAncestor(ISourceFile.class);
+        if (sourceFile != null)
         {
-            sourceFile.reconcile(false, null);
+            try
+            {
+                sourceFile.reconcile(false, null);
+            }
+            catch (CoreException e)
+            {
+                Activator.log(e.getStatus());
+                return null;
+            }
         }
-        catch (CoreException e)
-        {
-            Activator.log(e.getStatus());
-            return null;
-        }
-        return sourceFile.getElementAt(position, null);
+        return element.getElementAt(position, null);
     }
 
     /**
@@ -459,7 +471,7 @@ public class SourceElementUtil
             return false;
         }
         TextRange identifyingRange = info.getIdentifyingRange();
-        if (identifyingRange.isNull())
+        if (identifyingRange == null)
             return false;
         textEditor.selectAndReveal(identifyingRange.getOffset(),
             identifyingRange.getLength());
@@ -584,11 +596,8 @@ The class `LinkingHelper` will extend the Platform-provided class
             Object input = getTreeViewer().getInput();
             if (!(input instanceof ISourceElement))
                 return null;
-            ISourceFile sourceFile = 
-                ((ISourceElement)input).getSourceFile();
-            ISourceElement element =
-                SourceElementUtil.getSourceElement(sourceFile,
-                    selection.getOffset());
+            ISourceElement element = SourceElementUtil.getElementAt(
+                (ISourceElement)input, selection.getOffset());
             if (element == null)
                 return null;
             return new StructuredSelection(element);
