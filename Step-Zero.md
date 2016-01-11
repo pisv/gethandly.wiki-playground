@@ -7,13 +7,14 @@ environment for our running example.
 ## Setting Up Eclipse
 
 To use the examples, **Eclipse IDE for Java and DSL Developers** is required.
-This tutorial assumes Eclipse Mars (4.5.0) release. You can find a build
+This tutorial assumes Eclipse Mars (4.5.x) release. You can find a build
 for your platform by visiting https://www.eclipse.org/downloads/.
 
-You also need to add **Handly 0.3.x** into the Eclipse installation. This can
+You also need to add **Handly 0.4.x** into the Eclipse installation. This can
 be done by installing all features from Handly update site. Please visit
 the project's [Downloads page](https://projects.eclipse.org/projects/technology.handly/downloads)
-to find the URL of the update site for the latest 0.3.x release.
+to find the URL of the update site for the latest 0.4.x release. Be sure
+to install all features, including examples and tests.
 
 ## Setting Up a Workspace
 

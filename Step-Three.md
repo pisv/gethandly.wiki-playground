@@ -394,8 +394,8 @@ so there is a good chance that you might be familiar with the core concepts.
 written by John Arthorne could be a great introduction to the problematics
 of efficiently notifying clients of changes in a handle-based model.)
 A detailed description of the infrastructure would take an article of its own,
-but hopefully the Javadocs can provide the necessary details of the protocols
-involved, and here we will give you a taste of what it's all about.
+but hopefully the API Javadocs can provide the necessary details regarding the
+protocols involved, and here we will give you a taste of what it is all about.
 
 The primary interfaces are `IElementChangeListener`, `IElementChangeEvent`,
 and `IHandleDelta`. There are also some useful implementations, namely
@@ -431,8 +431,8 @@ Each delta object provides the following information:
 * The precise nature of the change (the change flags).
 * Deltas for any added, removed, or changed children.
 * A summary of what markers changed on the element's corresponding resource.
-* A summary of changes to children of the element's corresponding resource
-that cannot be described in terms of model changes.
+* A summary of resource changes to children of the element's corresponding
+resource that cannot be described in terms of model changes.
 
 In the case where an element has moved, the `ADDED` delta for the destination
 also supplies the source element, and the `REMOVED` delta for the source
@@ -874,8 +874,8 @@ for completeness.
 The test case will now pass.
 
 Well, in this case it was quite simple, but for models with
-a more complicated mapping to workspace resources the implementation
-would be much more elaborate.
+a more complex mapping to workspace resources the implementation
+would be appropriately more elaborate.
 
 Also, please note that the actual implementation of `FooDeltaProcessor`
 in the [Step Three repository](https://github.com/pisv/gethandly.3rd)
@@ -885,7 +885,7 @@ We spare you the details because they add nothing substantial to discussion.
 If you are interested, you can study yourself the complete implementation
 of the `FooDeltaProcessor` and the corresponding `FooModelNotificationTest`.
 
-Great, now we need to have our view respond to model change notifications
+Great, now we need to make our view respond to model change notifications
 to keep the view up-to-date with the model.
 
 Let's make the `FooNavigator` class implement the `IElementChangeListener`,
@@ -956,7 +956,7 @@ public class FooNavigator
  }
 ```
 
-It looks deceptively simple, but if it was production code, we would analyze
+It looks deceptively simple, but if it were production code, we would analyze
 the Foo element delta and update the view incrementally. We leave it
 as an exercise to the reader.
 

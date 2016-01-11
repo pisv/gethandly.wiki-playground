@@ -3,9 +3,9 @@
 In [[Step Three]] we have built a Navigator view for our Handly-based model.
 It works fine, except that it cannot display the outline of the editor's
 current contents for a Foo file -- it only "sees" the file's saved contents.
-In this step we will employ the so-called "working copy" to make the view
-even more alive. We will also use the resulting infrastructure to build
-the Outline page for the Foo editor -- another view of our model.
+In this step we will employ the so-called working copy facility to make
+the view even more alive. We will also use the resulting infrastructure
+to build the Outline page for the Foo editor -- another view of our model.
 The complete source code for this step of the running example is available
 in the [Step Four repository](https://github.com/pisv/gethandly.4th).
 
@@ -48,25 +48,26 @@ for the language:
             HandlyXtextEditorCallback.class);
     }
 
-    public Class<? extends IElementForEditorInputFactory> bindIElementForEditorInputFactory()
+    public Class<? extends IInputElementProvider> bindIInputElementProvider()
     {
-        return FooElementForEditorInputFactory.class;
+        return FooInputElementProvider.class;
     }
 ```
 
-The only missing piece is the `FooElementForEditorInputFactory`. This class
-should implement the `IElementForEditorInputFactory` and provide the `IHandle`
+The only missing piece is the `FooInputElementProvider`. This class
+should implement the `IInputElementProvider` and provide the `IHandle`
 element corresponding to the given `IEditorInput`:
 
 ```java
 // package org.eclipse.handly.internal.examples.basic.ui
 
 /**
- * Implementation of {@link IElementForEditorInputFactory} to be bound
+ * Implementation of {@link IInputElementProvider} to be bound
  * in the Xtext UI module for the language.
  */
-public class FooElementForEditorInputFactory
-    implements IElementForEditorInputFactory
+@Singleton
+public class FooInputElementProvider
+    implements IInputElementProvider
 {
     @Override
     public IHandle getElement(IEditorInput input)
@@ -118,12 +119,12 @@ It will then fire the delta as a `POST_RECONCILE` event:
     {
         @Override
         public void reconcile(Object ast, NonExpiringSnapshot snapshot,
-            boolean forced) throws CoreException
+            boolean forced, IProgressMonitor monitor) throws CoreException
         {
             HandleDeltaBuilder deltaBuilder =
                 new HandleDeltaBuilder(FooFile.this);
 
-            super.reconcile(ast, snapshot, forced);
+            super.reconcile(ast, snapshot, forced, monitor);
 
             deltaBuilder.buildDelta();
             if (!deltaBuilder.getDelta().isEmpty())
@@ -198,15 +199,15 @@ Everything should work fine now.
 
 ## Other Editors
 
-Besides providing out-of-the-box integration with Xtext editor,
+Besides providing out-of-the-box integration with the Xtext editor,
 Handly can also support other editors. In particular, it allows for
 integration with TextFileBuffer-based editors. The following notes are
-intended as forward pointers only; full-blown editor implementation
+intended as forward pointers only; a full-blown editor implementation
 is beyond the scope of this tutorial.
 
-To integrate a TextFileBuffer-based editor with working copy functionality,
+To integrate a TextFileBuffer-based editor with the working copy facility,
 you'll need to subclass the editor's document provider from the class
-`SourceFileDocumentProvider` (which extends the `TextFileDocumentProvider`).
+`SourceFileDocumentProvider`, which extends the `TextFileDocumentProvider`.
 
 For example:
 
@@ -216,7 +217,7 @@ public class FooFileDocumentProvider
 {
     public FooFileDocumentProvider()
     {
-        super(new FooElementForEditorInputFactory());
+        super(new FooInputElementProvider());
         // ...
     }
 
@@ -296,8 +297,6 @@ public class FooEditor
     }
 }
 ```
-
-Note that the described functionality is only available since Handly 0.3.
 
 ## Outline View
 
@@ -491,102 +490,6 @@ We will encapsulate this new functionality in the inner class `LinkingHelper`:
     }
 ```
 
-We are going to need a couple of utility methods for dealing with
-source elements:
-
-```java
-// package org.eclipse.handly.internal.examples.basic.ui
-
-/**
- * Utilities for <code>ISourceElement</code>s.
- * <p>
- * Note how this code is free from specifics of the Foo Model, 
- * thanks to the uniform API provided by Handly.
- * </p>
- */
-public class SourceElementUtil
-{
-    /**
-     * Returns the smallest element within the given element that includes
-     * the given source position, or <code>null</code> if the given position
-     * is not within the source range of the given element, or if the
-     * given element does not exist or an exception occurs while accessing
-     * its corresponding resource. If no finer grained element is found
-     * at the position, the given element is returned.
-     * <p>
-     * As a side effect, if the given element is contained in a source file,
-     * the source file will be reconciled.
-     * </p>
-     *
-     * @param element a source element (not <code>null</code>)
-     * @param position a source position (0-based)
-     * @return the innermost element enclosing the given source position,
-     *  or <code>null</code> if none (including the given element)
-     */
-    public static ISourceElement getElementAt(ISourceElement element,
-        int position)
-    {
-        ISourceFile sourceFile;
-        if (element instanceof ISourceFile)
-            sourceFile = (ISourceFile)element;
-        else
-            sourceFile = element.getAncestor(ISourceFile.class);
-        if (sourceFile != null)
-        {
-            try
-            {
-                sourceFile.reconcile(false, null);
-            }
-            catch (CoreException e)
-            {
-                Activator.log(e.getStatus());
-                return null;
-            }
-        }
-        return element.getElementAt(position, null);
-    }
-
-    /**
-     * Selects and reveals the identifying range of the given source element
-     * in the given text editor. Returns <code>false</code> if the 
-     * identifying range is not set or cannot be obtained (e.g., the 
-     * element does not exist). 
-     *
-     * @param textEditor not <code>null</code>
-     * @param element not <code>null</code>
-     * @return <code>true</code> if the element was successfully revealed 
-     *  in the editor; <code>false</code> otherwise
-     */
-    public static boolean revealInTextEditor(ITextEditor textEditor,
-        ISourceElement element)
-    {
-        ISourceElementInfo info;
-        try
-        {
-            info = element.getSourceElementInfo();
-        }
-        catch (CoreException e)
-        {
-            if (!element.exists())
-                ; // this is considered normal
-            else
-                Activator.log(e.getStatus());
-            return false;
-        }
-        TextRange identifyingRange = info.getIdentifyingRange();
-        if (identifyingRange == null)
-            return false;
-        textEditor.selectAndReveal(identifyingRange.getOffset(),
-            identifyingRange.getLength());
-        return true;
-    }
-
-    private SourceElementUtil()
-    {
-    }
-}
-```
-
 The class `LinkingHelper` will extend the Platform-provided class
 `OpenAndLinkWithEditorHelper`:
 
@@ -667,8 +570,12 @@ The class `LinkingHelper` will extend the Platform-provided class
                 ((IStructuredSelection)selection).getFirstElement();
             if (!(element instanceof ISourceElement))
                 return;
-            SourceElementUtil.revealInTextEditor(editor,
-                (ISourceElement)element);
+            TextRange identifyingRange = SourceElements.getSourceElementInfo(
+                (ISourceElement)element).getIdentifyingRange();
+            if (identifyingRange == null)
+                return;
+            editor.selectAndReveal(identifyingRange.getOffset(),
+                identifyingRange.getLength());
         }
 
         @SuppressWarnings("unchecked")
@@ -699,7 +606,7 @@ The class `LinkingHelper` will extend the Platform-provided class
             Object input = getTreeViewer().getInput();
             if (!(input instanceof ISourceElement))
                 return null;
-            ISourceElement element = SourceElementUtil.getElementAt(
+            ISourceElement element = SourceElements.getElementAt(
                 (ISourceElement)input, selection.getOffset());
             if (element == null)
                 return null;
@@ -776,7 +683,7 @@ You should know enough now to explore Handly and venture out on your own.
 To dive deeper, let us point you to the project's [documentation page]
 (https://wiki.eclipse.org/Handly) and, of course, [source code]
 (http://git.eclipse.org/c/handly/org.eclipse.handly.git). In particular,
-do not miss out on a more advanced exemplary implementation that Handly
+you might be interested in a more advanced exemplary implementation that Handly
 provides: example model for Java (`org.eclipse.handly.examples.javamodel`).
 
 If you have found an error in the text or in a code example,

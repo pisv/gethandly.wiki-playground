@@ -14,7 +14,7 @@ Let's start implementing the model. In Handly, every model element is an
 instance of `IHandle`. This interface is specialized with `ISourceElement`
 for representing source elements, which is further specialized with
 `ISourceFile` and `ISourceConstruct` for representing source files and
-their structural elements. Handly provides basic partial implementations
+their structural elements. Handly provides skeletal implementations
 for each of these interfaces. In this part of the article we will deal
 solely with `IHandle` and its basic implementation, class `Handle`.
 We will get to source elements in the next step.
@@ -249,8 +249,8 @@ Foo projects as the children of the `FooModel`:
 // FooModel.java
 
     @Override
-    protected void buildStructure(Body body, Map<IHandle, Body> newElements)
-        throws CoreException
+    protected void buildStructure(Body body, Map<IHandle, Body> newElements,
+        IProgressMonitor monitor) throws CoreException
     {
         IProject[] projects = workspace.getRoot().getProjects();
         List<IFooProject> fooProjects =
@@ -411,6 +411,15 @@ class FooModelCache
     }
 
     @Override
+    public void putAll(Map<IHandle, Body> elements)
+    {
+        for (Map.Entry<IHandle, Body> entry : elements.entrySet())
+        {
+            put(entry.getKey(), entry.getValue());
+        }
+    }
+
+    @Override
     public void remove(IHandle handle)
     {
         if (handle instanceof IFooModel)
@@ -437,8 +446,8 @@ implement the inherited abstract methods:
     }
 
     @Override
-    protected void buildStructure(Body body, Map<IHandle, Body> newElements)
-        throws CoreException
+    protected void buildStructure(Body body, Map<IHandle, Body> newElements,
+        IProgressMonitor monitor) throws CoreException
     {
         // no children for now
     }
@@ -659,7 +668,7 @@ java.lang.IllegalStateException
 	at org.eclipse.handly.internal.examples.basic.ui.model.FooModelTest.testFooModel(FooModelTest.java:40)
 ```
 
-That goes to show you that those little tests may have some value some times!
+That goes to show you that those little tests may have some value some times ;-)
 
 It appears that we forgot to start up the `FooModelManager` in the bundle's
 Activator. Let's not forget, then, to stop it too.
@@ -752,7 +761,7 @@ in the Foo model takes notice of that and nobody is going to update the
 cached body! So the second call to `getFooProjects` returns the same (stale)
 result: `Test001` only.
 
-Clearly, we need *somebody* in the Foo model to take care of that by updating
+Clearly, we need *somebody* in the Foo model to take care of it by updating
 the model cache in response to resource changes in the workspace. We need
 a *Delta Processor*. This brings us to the next section.
 
@@ -913,10 +922,10 @@ class FooDeltaProcessor
 }
 ```
 
-The basic idea behind this code is quite simple, actually. In response
+The basic idea behind this code is actually quite simple. In response
 to a resource change event we update the Foo model by either adding/removing
-child elements from the cached bodies or by altogether evicting the
-element's `Body` from the model cache (with all descendants).
+child elements from the cached bodies or altogether evicting the element's
+`Body` from the model cache (with all descendants).
 
 The test case will now pass.
 
@@ -935,10 +944,10 @@ Before we move onto the next step, let's review what we've done so far.
 We implemented a simple but complete Handly-based model to give you
 a taste of the basic structuring and behavior as well as of the entire
 development process. We also wrote some tests and implemented a
-resource delta processor for keeping the model up-to-date.
+resource delta processor that keeps the model up-to-date.
 
 The code may seem quite involved for such a simple model, but most
 of the code is actually the infrastructure that will not change much
-when we will take this basic model and add enough functionality to
-build a complete *code model* for the Foo language in the next step:
+when we take this basic model and add enough functionality to build a
+complete *code model* for the Foo language in the next step:
 [[The Rest of the Model|Step Two]].

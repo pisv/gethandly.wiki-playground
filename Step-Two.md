@@ -13,8 +13,8 @@ Recall that every model element in Handly is an instance of `IHandle`.
 This interface is specialized with `ISourceElement` for representing
 source elements, which is further specialized with `ISourceFile` and
 `ISourceConstruct` for representing source files and their structural
-elements. Handly provides basic partial implementations for each
-of these interfaces.
+elements. Handly provides skeletal implementations for each of these
+interfaces.
 
 As usual, we begin by defining interfaces for the new model elements
 (in the package `org.eclipse.handly.examples.basic.ui.model`
@@ -73,7 +73,7 @@ public class FooDef
 }
 ```
 
-Once more, we need to complete the implementation by defining the appropriate
+Once again, we need to complete the implementation by defining the appropriate
 constructors and overriding the inherited abstract methods. Let's begin
 with the class `FooVar`:
 
@@ -172,7 +172,7 @@ Thus, we need to make `arity` part of the state of a `FooDef` instance,
 the handle for a Foo function (as you may remember, handles are value objects
 that hold immutable, 'key' information about a model element). We also need
 to extend the `equals` and `hashCode` methods to take `arity` into account
-(until now the inherited implementation of `equals` and `hashCode` was always
+(until now the inherited implementation of `equals` and `hashCode` was
 sufficient).
 
 Let's introduce a getter method for `arity` in the `IFooDef` interface:
@@ -233,13 +233,15 @@ public class FooFile
 
     @Override
     protected void buildStructure(SourceElementBody body,
-        Map<IHandle, Body> newElements, Object ast, String source)
+        Map<IHandle, Body> newElements, Object ast, String source,
+        IProgressMonitor monitor)
     {
         // empty for now
     }
 
     @Override
-    protected Object createStructuralAst(String source) throws CoreException
+    protected Object createStructuralAst(String source,
+        IProgressMonitor monitor) throws CoreException
     {
         // no AST for now
         return null;
@@ -262,8 +264,8 @@ Now we can complete the implementation of the `FooProject` class:
 // FooProject.java
 
     @Override
-    protected void buildStructure(Body body, Map<IHandle, Body> newElements)
-        throws CoreException
+    protected void buildStructure(Body body, Map<IHandle, Body> newElements,
+        IProgressMonitor monitor) throws CoreException
     {
         IResource[] members = project.members();
         List<IFooFile> fooFiles = new ArrayList<IFooFile>(members.length);
@@ -413,9 +415,9 @@ We can expand our test case now:
     }
 ```
 
-You may remember that we use some test data in the form of a few projects
-predefined in the `workspace` folder of the test fragment and materialized
-into the runtime workspace via `setUpProject` calls.
+Recall that we use some test data in the form of a few projects predefined
+in the `workspace` folder of the test fragment and materialized into the
+runtime workspace via `setUpProject` calls.
 
 Run the test case. Success! So far, so good.
 
@@ -543,7 +545,7 @@ The test case will now pass.
 Let's get back to the `FooFile` and its `buildStructure` and
 `createStructuralAst` methods.
 
-The `FooFile` is the last openable element in our model hierarchy.
+The `FooFile` is the innermost openable element in our model hierarchy.
 Elements inside a source file are *never* openable because the
 source file always builds all of its inner structure in one go
 by parsing the text contents, as we shall soon see.
@@ -552,11 +554,12 @@ At the moment, we need to implement this couple of abstract methods
 inherited from the `SourceFile`:
 
 ```java
-protected abstract Object createStructuralAst(String source)
-    throws CoreException;
+protected abstract Object createStructuralAst(String source,
+    IProgressMonitor monitor) throws CoreException;
 
 protected abstract void buildStructure(SourceElementBody body,
-    Map<IHandle, Body> newElements, Object ast, String source);
+    Map<IHandle, Body> newElements, Object ast, String source,
+    IProgressMonitor monitor);
 ```
 
 The method `createStructuralAst` returns a new Abstract Syntax Tree (AST)
@@ -568,8 +571,8 @@ whenever necessary and passes the result to `buildStructure`.
 
 The method `buildStructure` should initialize the given `SourceElementBody`
 based on the given AST and the given source string from which the AST was
-created. All the descendant elements of the source file are to be placed
-in the given `newElements` map as handle/body pairs.
+created. The descendant elements of the source file are to be placed
+into the given `newElements` map as handle/body pairs.
 
 The class `SourceElementBody` extends the class `Body` and implements the
 interface `ISourceElementInfo`. It holds cached structure and properties for
@@ -577,14 +580,14 @@ a source element. Those structure and properties relate to a known snapshot
 of the source file's contents. There are two predefined properties:
 
 * the full text range of the source element
-* the text range of the source element's identifier if there is one
+* the text range of the source element's identifier (if there is one)
 
-Besides, source elements can define their own, specific properties to be
-stored in a `SourceElementBody`.
+Also, source elements can define their own, specific properties to be stored
+in a `SourceElementBody`.
 
 That was a bit of theory behind these two methods. See the [System Overview]
 (http://www.eclipse.org/downloads/download.php?file=/handly/docs/handly-overview.pdf&r=1)
-for more information on the architecture, and the Javadocs for a detailed
+for more information on the architecture, and the API Javadocs for a detailed
 description of the protocols.
 
 In our case, the Foo language is based on Xtext, so parsing is
@@ -604,8 +607,8 @@ Xtext-specific:
      * @throws CoreException if resource loading failed
      */
     @Override
-    protected Object createStructuralAst(String source)
-        throws CoreException
+    protected Object createStructuralAst(String source,
+        IProgressMonitor monitor) throws CoreException
     {
         try
         {
@@ -691,7 +694,8 @@ into the `newElements` map:
 
     @Override
     protected void buildStructure(SourceElementBody body,
-        Map<IHandle, Body> newElements, Object ast, String source)
+        Map<IHandle, Body> newElements, Object ast, String source,
+        IProgressMonitor monitor)
     {
         XtextResource resource = (XtextResource)ast;
         IParseResult parseResult = resource.getParseResult();
@@ -710,7 +714,7 @@ into the `newElements` map:
 ```
 
 As you can see, this method delegates all the hard work to the class
-`FooFileStructureBuilder`, which extends the Handly-provided `StructureHelper`:
+`FooFileStructureBuilder`, which uses the Handly-provided `StructureHelper`:
 
 ```java
 // package org.eclipse.handly.internal.examples.basic.ui.model
@@ -719,26 +723,26 @@ As you can see, this method delegates all the hard work to the class
  * Builds the inner structure for a {@link FooFile}.
  */
 class FooFileStructureBuilder
-    extends StructureHelper
 {
+    private final StructureHelper helper;
     private final ILocationInFileProvider locationProvider;
 
     /**
      * Constructs a new Foo file structure builder.
      * 
-     * @param newElements the map to populate with stucture elements 
+     * @param newElements the map to populate with structure elements
      *  (not <code>null</code>)
-     * @param resourceServiceProvider Xtext {@link IResourceServiceProvider}
+     * @param resourceServiceProvider Xtext's {@link IResourceServiceProvider}
      *  for the language (not <code>null</code>)
      */
     FooFileStructureBuilder(Map<IHandle, Body> newElements,
         IResourceServiceProvider resourceServiceProvider)
     {
-        super(newElements);
+        helper = new StructureHelper(newElements);
         if (resourceServiceProvider == null)
             throw new IllegalArgumentException();
-        this.locationProvider =
-            resourceServiceProvider.get(ILocationInFileProvider.class);
+        locationProvider = resourceServiceProvider.get(
+            ILocationInFileProvider.class);
     }
 
     /**
@@ -749,14 +753,13 @@ class FooFileStructureBuilder
      * @param body the body of the Foo file (not <code>null</code>)
      * @param module the AST of the Foo file (not <code>null</code>)
      */
-    void buildStructure(FooFile handle, SourceElementBody body,
-        Module module)
+    void buildStructure(FooFile handle, SourceElementBody body, Module module)
     {
         for (Var var : module.getVars())
             buildStructure(handle, body, var);
         for (Def def : module.getDefs())
             buildStructure(handle, body, def);
-        complete(body);
+        helper.complete(body);
     }
 
     private void buildStructure(FooFile parent, Body parentBody, Var var)
@@ -768,8 +771,8 @@ class FooFileStructureBuilder
         SourceElementBody body = new SourceElementBody();
         body.setFullRange(getFullRange(var));
         body.setIdentifyingRange(getIdentifyingRange(var));
-        addChild(parentBody, handle, body);
-        complete(body);
+        helper.addChild(parentBody, handle, body);
+        helper.complete(body);
     }
 
     private void buildStructure(FooFile parent, Body parentBody, Def def)
@@ -782,10 +785,10 @@ class FooFileStructureBuilder
         SourceElementBody body = new SourceElementBody();
         body.setFullRange(getFullRange(def));
         body.setIdentifyingRange(getIdentifyingRange(def));
-        body.set(FooDef.PARAMETER_NAMES, // store a custom property
-            def.getParams().toArray(new String[arity]));
-        addChild(parentBody, handle, body);
-        complete(body);
+        body.set(FooDef.PARAMETER_NAMES, def.getParams().toArray(
+            new String[arity]));
+        helper.addChild(parentBody, handle, body);
+        helper.complete(body);
     }
 
     private TextRange getFullRange(EObject eObject)
@@ -795,8 +798,7 @@ class FooFileStructureBuilder
 
     private TextRange getIdentifyingRange(EObject eObject)
     {
-        return toTextRange(locationProvider.getSignificantTextRegion(
-            eObject));
+        return toTextRange(locationProvider.getSignificantTextRegion(eObject));
     }
 
     private static TextRange toTextRange(ITextRegion region)
@@ -809,17 +811,16 @@ class FooFileStructureBuilder
 }
 ```
 
-The base class `StructureHelper` provides a couple of handy methods for
+The class `StructureHelper` provides a couple of handy methods for
 building the structure of a model element: `addChild` remembers the given
 element as a child of the given parent body and puts the element together
 with the given body into the `newElements` map (resolving duplicates
 along the way), while `complete` completes the given body by setting
 the elements previously remembered by `addChild` as the body's children.
 
-Again, even if you can't fully comprehend Xtext-specific details, you can
-well grasp the essence: we just walk the AST and in the process compute and
-place into the `newElements` a handle/body pair for each structural element
-inside the source file.
+Don't worry if you couldn't fully understand Xtext-specific details. Basically,
+we just walk the AST and in the process compute and place into the `newElements`
+a handle/body pair for each structural element in the source file.
 
 Note how the `FooFileStructureBuilder` uses a custom property for storing
 the parameter names of a Foo function in the element's `SourceElementBody`.

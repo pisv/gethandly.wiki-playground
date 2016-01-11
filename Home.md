@@ -5,19 +5,21 @@ http://eclipse.org/handly/**
 Probably the best way to tell you about Handly is to walk you through
 the development of an example. We'll use a simple Xtext-based language
 as the basis for the running example. While nothing in the Handly core
-depends on Xtext, going this way will be much easier for you to get started.
+depends on Xtext, going this way will be a bit easier for you to get started.
 The complete example is available as part of the Examples feature of Handly;
 see the plug-ins `org.eclipse.handly.examples.basic` and
 `org.eclipse.handly.examples.basic.ui`.
 
 This article is intended for implementers of Eclipse-based development tools
 for a programming language. We assume a familiarity with plug-in development
-and the Eclipse resource model, and also expect some architectural understanding
-of the core infrastructure of JDT, CDT or other similar Eclipse-based language
-tooling. That is, the text is not specifically about why you need a
-(handle-based) code model for your language or what the heck it is
-(although we hope to shed some light on these questions too). Rather,
-it's about how to implement one with Handly.
+and the Eclipse Platform resource model, and also expect some architectural
+understanding of the core infrastructure of Eclipse Java Development Tools (JDT)
+or of other similarly structured Eclipse-based tools such as Eclipse C/C++
+Development Tooling (CDT). That is, the text is not specifically about why
+you would need a handle-based model defining, from your language's angle,
+a code-centric view on the underlying workspace, or what the heck it is
+(although we hope to shed some light on those questions too). Rather,
+it is about how to implement such a model with Handly.
 
 Let's start with description of our language called Foo.
 Here's its Xtext grammar:
@@ -88,4 +90,4 @@ around Handly in increasing detail.
 3. [[Step Two]] takes the basic model and adds the functionality
 expected of a code model for a programming language.
 4. [[Step Three]] displays the finished model in a view.
-5. [[Step Four]] brings the model truly to life with the working copy.
+5. [[Step Four]] brings the model truly to life with the working copy facility.
