@@ -2,8 +2,8 @@
 
 In [[Step Three]] we have built a Navigator view for our Handly-based model.
 It works fine, except that it cannot display the outline of the editor's
-current contents for a Foo file -- it only "sees" the file's saved contents.
-In this step we will employ the so-called working copy facility to make
+current contents for a Foo file -- it only "sees" the saved contents of the
+file. In this step we will employ the so-called working copy facility to make
 the view even more alive. We will also use the resulting infrastructure
 to build the Outline page for the Foo editor -- another view of our model.
 The complete source code for this step of the running example is available
@@ -16,7 +16,7 @@ Instead, those structure and properties will reflect the current contents
 of the source file's editor. To enable this, the editor needs to be integrated
 with Handly.
 
-Fortunately, our Foo language is Xtext-based, and Handly provides
+Fortunately, our Foo language is Xtext-based, and Handly provides an
 out-of-the-box integration of the working copy facility with the Xtext editor.
 To make use of it, we need to introduce a few bindings in the Xtext UI module
 for the language:
@@ -55,8 +55,8 @@ for the language:
 ```
 
 The only missing piece is the `FooInputElementProvider`. This class
-should implement the `IInputElementProvider` and provide the `IHandle`
-element corresponding to the given `IEditorInput`:
+should implement the interface `IInputElementProvider` and provide `IElement`
+corresponding to the given `IEditorInput`:
 
 ```java
 // package org.eclipse.handly.internal.examples.basic.ui
@@ -70,7 +70,7 @@ public class FooInputElementProvider
     implements IInputElementProvider
 {
     @Override
-    public IHandle getElement(IEditorInput input)
+    public IElement getElement(IEditorInput input)
     {
         if (input == null)
             return null;
@@ -100,16 +100,16 @@ notifications will describe exactly how the working copy changed
 (i.e. what variables/functions were added/removed etc.)
 
 To enable notifications about working copy changes, we will override the method
-`getReconcileOperation()` in the class `FooFile` and return a *notifying*
-reconcile operation that will use a `HandleDeltaBuilder` to build a delta tree
+`hReconcileOperation()` in the class `FooFile` and return a *notifying*
+reconcile operation that will use an `ElementDifferencer` to build a delta tree
 between the "pre-reconciled" and "post-reconciled" state of the working copy.
-It will then fire the delta as a `POST_RECONCILE` event:
+It will then fire the built delta as a `POST_RECONCILE` event:
 
 ```java
 // FooFile.java
 
     @Override
-    public ReconcileOperation getReconcileOperation()
+    public ReconcileOperation hReconcileOperation()
     {
         return new NotifyingReconcileOperation();
     }
@@ -121,27 +121,27 @@ It will then fire the delta as a `POST_RECONCILE` event:
         public void reconcile(Object ast, NonExpiringSnapshot snapshot,
             boolean forced, IProgressMonitor monitor) throws CoreException
         {
-            HandleDeltaBuilder deltaBuilder =
-                new HandleDeltaBuilder(FooFile.this);
+            ElementDifferencer differ = new ElementDifferencer(
+                new ElementDelta.Builder(new ElementDelta(FooFile.this)));
 
             super.reconcile(ast, snapshot, forced, monitor);
 
-            deltaBuilder.buildDelta();
-            if (!deltaBuilder.getDelta().isEmpty())
+            differ.buildDelta();
+            if (!differ.isEmptyDelta())
             {
                 FooModelManager.INSTANCE.fireElementChangeEvent(
                     new ElementChangeEvent(
                         ElementChangeEvent.POST_RECONCILE,
-                        deltaBuilder.getDelta()));
+                        differ.getDelta()));
             }
         }
     }
 ```
 
-The Handly-provided class `HandleDeltaBuilder` builds a delta tree between
-the version of a model element at the time the builder was created and
+The Handly-provided class `ElementDifferencer` builds a delta tree between
+the version of a model element at the time the differencer was created and
 the current version of the element. It performs this operation by locally
-caching the contents of the element when the builder is created. When the
+caching the contents of the element when the differencer is created. When the
 method `buildDelta()` is called, it creates a delta over the cached contents
 and the new contents.
 
@@ -152,24 +152,25 @@ still be displayed in the view. Not good!
 
 To fix it, we need to fire events about switching a Foo file to/from the
 working copy mode. To do that, we will extend the `SourceFile`'s method
-`workingCopyChanged()`:
+`hWorkingCopyModeChanged()`:
 
 ```java
 
     @Override
-    protected void workingCopyModeChanged()
+    protected void hWorkingCopyModeChanged()
     {
-        super.workingCopyModeChanged();
+        super.hWorkingCopyModeChanged();
 
-        HandleDelta delta = new HandleDelta(getRoot());
-        if (file.exists())
-            delta.insertChanged(this, HandleDelta.F_WORKING_COPY);
+        ElementDelta.Builder builder = new ElementDelta.Builder(
+            new ElementDelta(getRoot()));
+        if (getFile().exists())
+            builder.changed(this, IElementDeltaConstants.F_WORKING_COPY);
         else if (isWorkingCopy())
-            delta.insertAdded(this, HandleDelta.F_WORKING_COPY);
+            builder.added(this, IElementDeltaConstants.F_WORKING_COPY);
         else
-            delta.insertRemoved(this, HandleDelta.F_WORKING_COPY);
-        FooModelManager.INSTANCE.fireElementChangeEvent(
-            new ElementChangeEvent(ElementChangeEvent.POST_CHANGE, delta));
+            builder.removed(this, IElementDeltaConstants.F_WORKING_COPY);
+        FooModelManager.INSTANCE.fireElementChangeEvent(new ElementChangeEvent(
+            ElementChangeEvent.POST_CHANGE, builder.getDelta()));
     }
 ```
 
@@ -184,14 +185,14 @@ the working copy as a special case in the `FooDeltaProcessor`:
         // new code -->
         if (fooFile.isWorkingCopy())
         {
-            currentDelta.insertChanged(fooFile, IHandleDelta.F_CONTENT
-                | IHandleDelta.F_UNDERLYING_RESOURCE);
+            builder.changed(fooFile, IElementDeltaConstants.F_CONTENT
+                | IElementDeltaConstants.F_UNDERLYING_RESOURCE);
             return;
         }
         // <-- new code
 
         close(fooFile);
-        currentDelta.insertChanged(fooFile, IHandleDelta.F_CONTENT);
+        builder.changed(fooFile, IElementDeltaConstants.F_CONTENT);
     }
 ```
 
@@ -365,7 +366,7 @@ public class FooOutlinePage
     @Override
     public void elementChanged(IElementChangeEvent event)
     {
-        if (affects(event.getDelta(), (IHandle)getTreeViewer().getInput()))
+        if (affects(event.getDelta(), (IElement)getTreeViewer().getInput()))
         {
             final Control control = getTreeViewer().getControl();
             control.getDisplay().asyncExec(new Runnable()
@@ -381,12 +382,12 @@ public class FooOutlinePage
         }
     }
 
-    private boolean affects(IHandleDelta delta, IHandle element)
+    private boolean affects(IElementDelta delta, IElement element)
     {
-        if (delta.getElement().equals(element))
+        if (ElementDeltas.getElement(delta).equals(element))
             return true;
-        IHandleDelta[] children = delta.getAffectedChildren();
-        for (IHandleDelta child : children)
+        IElementDelta[] children = ElementDeltas.getAffectedChildren(delta);
+        for (IElementDelta child : children)
         {
             if (affects(child, element))
                 return true;
@@ -570,7 +571,7 @@ The class `LinkingHelper` will extend the Platform-provided class
                 ((IStructuredSelection)selection).getFirstElement();
             if (!(element instanceof ISourceElement))
                 return;
-            TextRange identifyingRange = SourceElements.getSourceElementInfo(
+            TextRange identifyingRange = Elements.getSourceElementInfo2(
                 (ISourceElement)element).getIdentifyingRange();
             if (identifyingRange == null)
                 return;
@@ -606,8 +607,8 @@ The class `LinkingHelper` will extend the Platform-provided class
             Object input = getTreeViewer().getInput();
             if (!(input instanceof ISourceElement))
                 return null;
-            ISourceElement element = SourceElements.getElementAt(
-                (ISourceElement)input, selection.getOffset());
+            ISourceElement element = Elements.getSourceElementAt2(
+                (ISourceElement)input, selection.getOffset(), null);
             if (element == null)
                 return null;
             return new StructuredSelection(element);
@@ -626,10 +627,10 @@ as part of a class library, thanks to the uniform Handly API.
 
 Launch the runtime workbench and test the newly added functionality.
 
-_We have implemented a basic outline page from scratch. Since Handly 0.3,
-you can use the Handly Outline framework. As a teaser, here is the corresponding
-implementation with the framework -- this class is both richer in ability and
-less in size:_
+_We have implemented a basic outline page from scratch. Since version 0.3,
+Handly provides a Common Outline framework. As a teaser, here is the
+corresponding implementation with the framework -- this class is both
+richer in ability and less in size:_
 
 ```java
 public class FooOutlinePage2
@@ -680,11 +681,12 @@ resonates with our intent:
 
 We hope that this tutorial did help you get started in a similar way.
 You should know enough now to explore Handly and venture out on your own.
-To dive deeper, let us point you to the project's [documentation page]
-(https://wiki.eclipse.org/Handly) and, of course, [source code]
-(http://git.eclipse.org/c/handly/org.eclipse.handly.git). In particular,
-you might be interested in a more advanced exemplary implementation that Handly
-provides: example model for Java (`org.eclipse.handly.examples.javamodel`).
+To dive deeper, let us point you to the project's [web site]
+(https://eclipse.org/handly/) and, of course, [source code]
+(https://projects.eclipse.org/projects/technology.handly/developer).
+In particular, you might be interested in a more advanced exemplary
+implementation that Handly provides: example model for Java
+(`org.eclipse.handly.examples.javamodel`).
 
 If you have found an error in the text or in a code example,
 or would like to suggest an enhancement, please [raise an issue]
@@ -694,6 +696,7 @@ We also accept pull requests. It is open source, after all! ;-)
 
 If you could not find the answer to your question or would like to provide
 feedback about this tutorial or about Handly in general, consider using the
-[project's forum](http://eclipse.org/forums/eclipse.handly).
+project's [forum](http://eclipse.org/forums/eclipse.handly) or [mailing list]
+(https://dev.eclipse.org/mailman/listinfo/handly-dev).
 
 *Put Handly to work for you!*

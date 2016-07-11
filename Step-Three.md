@@ -7,31 +7,81 @@ The complete source code for this step of the running example is available
 in the [Step Three repository](https://github.com/pisv/gethandly.3rd).
 
 Before we start building the view, some preliminary work needs to be done.
-Let's introduce a marker interface `IFooElement` for all elements provided
-by the Foo model:
+First, let's introduce the base interface for all Foo elements:
 
 ```java
 // package org.eclipse.handly.examples.basic.ui.model
 
+/**
+ * Common protocol for all elements provided by the Foo Model.
+ */
 public interface IFooElement
-    extends IHandle
+    extends IElementExtension
 {
+    @Override
+    default IFooElement getParent()
+    {
+        return (IFooElement)IElementExtension.super.getParent();
+    }
+
+    @Override
+    default IFooModel getRoot()
+    {
+        return (IFooModel)IElementExtension.super.getRoot();
+    }
 }
 
 public interface IFooModel
-    extends IHandle, IFooElement
+    extends IFooElement
+{
+    // ...
+}
 
 public interface IFooProject
-    extends IHandle, IFooElement
+    extends IFooElement
+{
+    @Override
+    default IFooModel getParent()
+    {
+        return (IFooModel)IFooElement.super.getParent();
+    }
+
+    // ...
+}
 
 public interface IFooFile
-    extends ISourceFile, IFooElement
+    extends IFooElement, ISourceFileExtension, ISourceElementExtension
+{
+    @Override
+    default IFooProject getParent()
+    {
+        return (IFooProject)IFooElement.super.getParent();
+    }
+
+    // ...
+}
 
 public interface IFooVar
-    extends ISourceConstruct, IFooElement
+    extends IFooElement, ISourceConstruct, ISourceElementExtension
+{
+    @Override
+    default IFooFile getParent()
+    {
+        return (IFooFile)IFooElement.super.getParent();
+    }
+}
 
 public interface IFooDef
-    extends ISourceConstruct, IFooElement
+    extends IFooElement, ISourceConstruct, ISourceElementExtension
+{
+    @Override
+    default IFooFile getParent()
+    {
+        return (IFooFile)IFooElement.super.getParent();
+    }
+
+    // ...
+}
 ```
 
 We will also define a new helper method in the `FooModelCore`:
@@ -388,9 +438,10 @@ the next section.
 
 Handly provides an infrastructure for dealing with *change notifications*
 in Handly-based models. It is largely similar in design to corresponding
-facilities of the JDT Java model and the Eclipse Platform resource model,
-so there is a good chance that you might be familiar with the core concepts.
-(If not, the eclipse.org article [How You've Changed!](https://www.eclipse.org/articles/Article-Resource-deltas/resource-deltas.html)
+facilities of the Eclipse Java development tools' Java model and the Eclipse
+Platform resource model, so there is a good chance that you might be familiar
+with the core concepts. (If not, the eclipse.org article [How You've Changed!]
+(https://www.eclipse.org/articles/Article-Resource-deltas/resource-deltas.html)
 written by John Arthorne could be a great introduction to the problematics
 of efficiently notifying clients of changes in a handle-based model.)
 A detailed description of the infrastructure would take an article of its own,
@@ -398,8 +449,8 @@ but hopefully the API Javadocs can provide the necessary details regarding the
 protocols involved, and here we will give you a taste of what it is all about.
 
 The primary interfaces are `IElementChangeListener`, `IElementChangeEvent`,
-and `IHandleDelta`. There are also some useful implementations, namely
-`ElementChangeEvent`, `HandleDelta`, and `HandleDeltaBuilder`, that can be
+and `IElementDelta`. There are also some useful implementations, namely
+`ElementChangeEvent`, `ElementDelta`, and `ElementDifferencer`, which can be
 subclassed if needed.
 
 The interface `IElementChangeListener` should be implemented by clients
@@ -410,13 +461,13 @@ what elements of the model changed and how they changed.
 
 The object passed to an element change listener is an instance of
 `IElementChangeEvent`. The most important bits of information in the event 
-are the event type, and the handle delta. The event type is simply an integer
+are the event type, and the element delta. The event type is simply an integer
 that describes what kind of event occurred. We will focus on `POST_CHANGE`
 event type here, i.e. on those events that occur during corresponding
 `POST_CHANGE` resource change notifications.
 
-The handle delta is actually the root of a tree of `IHandleDelta` objects.
-The tree of deltas is structured much like the tree of `IHandle` objects
+The element delta is actually the root of a tree of `IElementDelta` objects.
+The tree of deltas is structured much like the tree of `IElement` objects
 that makes up the model, so that each delta object corresponds to exactly
 one element of the model. The delta hierarchy will include deltas for all
 affected elements that existed prior to the model changing operation, and
@@ -424,9 +475,10 @@ all affected elements that existed after the operation. Think of it as
 the union of the model contents before and after a particular operation,
 with all unchanged sub-trees pruned out.
 
-Each delta object provides the following information:
+Each delta object provides the following information, which can be
+uniformly accessed via methods in the class `ElementDeltas`:
 
-* The element it corresponds to.
+* The element the delta object corresponds to.
 * The kind of modification (added, removed, or changed).
 * The precise nature of the change (the change flags).
 * Deltas for any added, removed, or changed children.
@@ -495,14 +547,14 @@ sense to encapsulate the change notification mechanism in there:
 ```java
 // FooModelManager.java
 
-    private ListenerList listenerList;
+    private ListenerList<IElementChangeListener> listeners;
 
     public void startup() throws Exception
     {
         fooModel = new FooModel();
-        handleManager = new HandleManager(new FooModelCache());
+        elementManager = new ElementManager(new FooModelCache());
         // new code -->
-        listenerList = new ListenerList();
+        listeners = new ListenerList<>();
         // <-- new code
         fooModel.getWorkspace().addResourceChangeListener(this,
             IResourceChangeEvent.POST_CHANGE);
@@ -512,32 +564,31 @@ sense to encapsulate the change notification mechanism in there:
     {
         fooModel.getWorkspace().removeResourceChangeListener(this);
         // new code -->
-        listenerList = null;
+        listeners = null;
         // <-- new code
-        handleManager = null;
+        elementManager = null;
         fooModel = null;
     }
 
     public void addElementChangeListener(IElementChangeListener listener)
     {
-        if (listenerList == null)
+        if (listeners == null)
             throw new IllegalStateException();
-        listenerList.add(listener);
+        listeners.add(listener);
     }
 
     public void removeElementChangeListener(IElementChangeListener listener)
     {
-        if (listenerList == null)
+        if (listeners == null)
             throw new IllegalStateException();
-        listenerList.remove(listener);
+        listeners.remove(listener);
     }
 
     public void fireElementChangeEvent(final IElementChangeEvent event)
     {
-        if (listenerList == null)
+        if (listeners == null)
             throw new IllegalStateException();
-        Object[] listeners = listenerList.getListeners();
-        for (final Object listener : listeners)
+        for (IElementChangeListener listener : listeners)
         {
             SafeRunner.run(new ISafeRunnable()
             {
@@ -548,8 +599,7 @@ sense to encapsulate the change notification mechanism in there:
 
                 public void run() throws Exception
                 {
-                    ((IElementChangeListener)listener).elementChanged(
-                        event);
+                    listener.elementChanged(event);
                 }
             });
         }
@@ -564,8 +614,8 @@ into Foo element deltas. Let the `FooDeltaProcessor` be responsible for that:
 ```java
 // FooDeltaProcessor.java
 
-    private HandleDelta currentDelta = new HandleDelta(
-        FooModelCore.getFooModel());
+    private ElementDelta.Builder builder = new ElementDelta.Builder(
+        new ElementDelta(FooModelCore.getFooModel()));
 
     /**
      * Returns the Foo element delta built from the resource delta. 
@@ -574,9 +624,20 @@ into Foo element deltas. Let the `FooDeltaProcessor` be responsible for that:
      * 
      * @return Foo element delta (never <code>null</code>)
      */
-    public HandleDelta getDelta()
+    public IElementDelta getDelta()
     {
-        return currentDelta;
+        return builder.getDelta();
+    }
+
+    /**
+     * Returns whether Foo elements were affected by the resource change.
+     *
+     * @return <code>true</code> if no Foo elements were affected,
+     *  and <code>false</code> otherwise
+     */
+    public boolean isEmptyDelta()
+    {
+        return builder.isEmptyDelta();
     }
 ```
 
@@ -600,7 +661,7 @@ Now we can complete the implementation of the `FooModelManager`:
             Activator.log(e.getStatus());
         }
         // new code -->
-        if (!deltaProcessor.getDelta().isEmpty())
+        if (!deltaProcessor.isEmptyDelta())
         {
             fireElementChangeEvent(new ElementChangeEvent(
                 ElementChangeEvent.POST_CHANGE, deltaProcessor.getDelta()));
@@ -645,25 +706,25 @@ public class FooModelNotificationTest
         IFooProject fooProject2 = fooModel.getFooProject("Test002");
 
         setUpProject("Test002");
-        assertEquality(newDelta().insertAdded(fooProject2), listener.delta);
+        assertDelta(newDeltaBuilder().added(fooProject2).getDelta(),
+            listener.delta);
 
         IFooFile fooFile1 = fooProject1.getFooFile("test.foo");
         fooFile1.getFile().touch(null);
-        assertEquality(
-            newDelta().insertChanged(fooFile1, HandleDelta.F_CONTENT),
-            listener.delta);
+        assertDelta(newDeltaBuilder().changed(fooFile1,
+            IElementDeltaConstants.F_CONTENT).getDelta(), listener.delta);
 
         fooFile1.getFile().delete(true, null);
-        assertEquality(newDelta().insertRemoved(fooFile1), listener.delta);
+        assertDelta(newDeltaBuilder().removed(fooFile1).getDelta(),
+            listener.delta);
     }
 
-    private HandleDelta newDelta()
+    private ElementDelta.Builder newDeltaBuilder()
     {
-        return new HandleDelta(fooModel);
+        return new ElementDelta.Builder(new ElementDelta(fooModel));
     }
 
-    private static void assertEquality(IHandleDelta expected,
-        IHandleDelta actual)
+    private static void assertDelta(ElementDelta expected, ElementDelta actual)
     {
         if (expected == null)
         {
@@ -671,36 +732,34 @@ public class FooModelNotificationTest
             return;
         }
         assertNotNull(actual);
-        assertEquals(expected.getElement(), actual.getElement());
-        assertEquals(expected.getKind(), actual.getKind());
-        assertEquals(expected.getFlags(), actual.getFlags());
-        assertEquals(expected.getMovedToElement(),
-            actual.getMovedToElement());
-        assertEquals(expected.getMovedFromElement(),
-            actual.getMovedFromElement());
-        IHandleDelta[] expectedChildren = expected.getAffectedChildren();
-        IHandleDelta[] actualChildren = actual.getAffectedChildren();
+        assertEquals(expected.hElement(), actual.hElement());
+        assertEquals(expected.hKind(), actual.hKind());
+        assertEquals(expected.hFlags(), actual.hFlags());
+        assertEquals(expected.hMovedToElement(), actual.hMovedToElement());
+        assertEquals(expected.hMovedFromElement(), actual.hMovedFromElement());
+        ElementDelta[] expectedChildren = expected.hAffectedChildren();
+        ElementDelta[] actualChildren = actual.hAffectedChildren();
         assertEquals(expectedChildren.length, actualChildren.length);
         for (int i = 0; i < expectedChildren.length; i++)
-            assertEquality(expectedChildren[i], actualChildren[i]);
+            assertDelta(expectedChildren[i], actualChildren[i]);
     }
 
     private static class FooModelListener
         implements IElementChangeListener
     {
-        public HandleDelta delta;
+        public ElementDelta delta;
 
         @Override
         public void elementChanged(IElementChangeEvent event)
         {
-            delta = (HandleDelta)event.getDelta();
+            delta = (ElementDelta)event.getDelta();
         }
     }
 }
 ```
 
-For convenience, we define the `assertEquality` method that checks if
-the two handle deltas are equal.
+For convenience, we define the `assertDelta` method that checks if
+the two element deltas are equal.
 
 Let's run the test, only to see it fail. It should come as no surprise.
 Since we have not implemented the delta translation logic yet,
@@ -712,13 +771,12 @@ We begin by defining some handy methods for delta conversion:
 ```java
 // FooDeltaProcessor.java
 
-    private void translateAddedDelta(IResourceDelta delta,
-        IFooElement element)
+    private void translateAddedDelta(IResourceDelta delta, IFooElement element)
     {
         if ((delta.getFlags() & IResourceDelta.MOVED_FROM) == 0)
         {
             // regular addition
-            currentDelta.insertAdded(element);
+            builder.added(element);
         }
         else
         {
@@ -726,19 +784,18 @@ We begin by defining some handy methods for delta conversion:
                 FooModelCore.create(getResource(delta.getMovedFromPath(),
                     delta.getResource().getType()));
             if (movedFromElement == null)
-                currentDelta.insertAdded(element);
+                builder.added(element);
             else
-                currentDelta.insertMovedTo(element, movedFromElement);
+                builder.movedTo(element, movedFromElement);
         }
     }
 
-    private void translateRemovedDelta(IResourceDelta delta,
-        IFooElement element)
+    private void translateRemovedDelta(IResourceDelta delta, IFooElement element)
     {
         if ((delta.getFlags() & IResourceDelta.MOVED_TO) == 0)
         {
             // regular removal
-            currentDelta.insertRemoved(element);
+            builder.removed(element);
         }
         else
         {
@@ -746,9 +803,9 @@ We begin by defining some handy methods for delta conversion:
                 FooModelCore.create(getResource(delta.getMovedToPath(),
                     delta.getResource().getType()));
             if (movedToElement == null)
-                currentDelta.insertRemoved(element);
+                builder.removed(element);
             else
-                currentDelta.insertMovedFrom(element, movedToElement);
+                builder.movedFrom(element, movedToElement);
         }
     }
 
@@ -756,7 +813,7 @@ We begin by defining some handy methods for delta conversion:
     {
         close(fooFile);
         // new code -->
-        currentDelta.insertChanged(fooFile, IHandleDelta.F_CONTENT);
+        builder.changed(fooFile, IElementDeltaConstants.F_CONTENT);
         // <-- new code
     }
 

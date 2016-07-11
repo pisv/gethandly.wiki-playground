@@ -2,26 +2,43 @@
 **A step-by-step guide to getting started with Eclipse Handly
 http://eclipse.org/handly/**
 
-Probably the best way to tell you about Handly is to walk you through
-the development of an example. We'll use a simple Xtext-based language
-as the basis for the running example. While nothing in the Handly core
-depends on Xtext, going this way will be a bit easier for you to get started.
+The Eclipse Handly project provides basic building blocks for handle-based
+models, with an emphasis on language-specific source code models of the
+underlying workspace. It allows creating highly scalable, robust,
+and thoroughly optimized models similar in design principles to the
+tried-and-tested Java model of Eclipse Java developement tools (JDT) while
+reducing programming effort, fostering software reuse, and enabling
+interoperability.
+
+Handly is designed for flexibility and can be used to create source code models
+for practically any language, whether general-purpose or domain-specific;
+it is compatible with any parsing technology. Since version 0.5, the model
+implementor has complete control over the model's base-level API, including
+the ability to implement a preexisting handle-based model API. At the same
+time, the provided uniform meta-level API establishes a common language and
+makes it possible for IDE components to work in a generic way with any
+Handly-based model.
+
+Probably the best way to tell you about Handly is to walk you through the
+development of an example. We'll use a simple Xtext-based language as the
+basis for the running example. While nothing in the Handly core depends
+on Xtext, going this way will be a bit easier for you to get started.
 The complete example is available as part of the Examples feature of Handly;
 see the plug-ins `org.eclipse.handly.examples.basic` and
 `org.eclipse.handly.examples.basic.ui`.
 
-This article is intended for implementers of Eclipse-based development tools
+This article is intended for implementors of Eclipse-based development tools
 for a programming language. We assume a familiarity with plug-in development
-and the Eclipse Platform resource model, and also expect some architectural
-understanding of the core infrastructure of Eclipse Java Development Tools (JDT)
-or of other similarly structured Eclipse-based tools such as Eclipse C/C++
-Development Tooling (CDT). That is, the text is not specifically about why
-you would need a handle-based model defining, from your language's angle,
-a code-centric view on the underlying workspace, or what the heck it is
-(although we hope to shed some light on those questions too). Rather,
-it is about how to implement such a model with Handly.
+and the Eclipse Platform resource model, and also expect an architectural
+understanding of the core infrastructure of Eclipse JDT or of other similarly
+structured Eclipse-based tools such as Eclipse C/C++ Development Tooling (CDT).
+That is, the text is not specifically about why you would need a handle-based
+model defining, from your language's angle, a code-centric view on the
+underlying workspace, or what the heck it is (although we hope to shed some
+light on those questions too). Rather, it is about how to implement such a
+model with Handly.
 
-Let's start with description of our language called Foo.
+Let's start with a description of our language called Foo.
 Here's its Xtext grammar:
 
 ```antlr
@@ -57,7 +74,7 @@ def f(x, y) {}
 The language is intentionally contrived to have only the simplest structural
 elements: declarations of variables and functions. There are no type definitions
 or symbolic references; variables don't have initializing expressions and
-function bodies are always empty. Nevertheless, this language is fertile ground
+function bodies are always empty. Nevertheless, this language is a fertile ground
 for a Handly example because it is simple so we won't have to explain a lot of
 stuff that isn't Handly-related, but at the same time it is sufficient for
 understanding the main aspects of implementation of a Handly-based model.

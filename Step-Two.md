@@ -9,48 +9,73 @@ down to structural elements inside source files. The complete source code
 for this step of the running example is available in the [Step Two repository]
 (https://github.com/pisv/gethandly.2nd).
 
-Recall that every model element in Handly is an instance of `IHandle`.
-This interface is specialized with `ISourceElement` for representing
-source elements, which is further specialized with `ISourceFile` and
-`ISourceConstruct` for representing source files and their structural
-elements. Handly provides skeletal implementations for each of these
-interfaces.
-
-As usual, we begin by defining interfaces for the new model elements
+As usual, we begin by defining the interfaces for the new model elements
 (in the package `org.eclipse.handly.examples.basic.ui.model`
-of the `org.eclipse.handly.examples.basic.ui` bundle):
+of the `org.eclipse.handly.examples.basic.ui` bundle). We will make
+these interfaces extend the relevant 'extension interfaces' such as
+`IElementExtension`, `ISourceElementExension`, and `ISourceFileExtension`
+to introduce a number of generally useful default methods for convenience,
+but could as well define the model element interfaces entirely from scratch.
+
+In any case, it is usually a good idea for the model API to extend the
+relevant common interfaces for model elements, such as `IElement`,
+`ISourceElement`, `ISourceFile`, and `ISourceConstruct` (the 'extension
+interfaces' we are extending already extend the corresponding common
+interfaces). This will make the model easier to use with APIs expressed
+in terms of the common element interfaces. (An important API expressed
+in terms of the common interfaces is the class `Elements` that provides
+methods for generic access to elements of any Handly-based model). Otherwise,
+explicit casts might be necessary when interacting with such APIs. Since
+each of the common interfaces for model elements is just a marker interface
+and contains no members, there is generally no drawback in extending them.
 
 ```java
 /**
  * Represents a Foo source file.
  */
 public interface IFooFile
-    extends ISourceFile
+    extends ISourceFileExtension, ISourceElementExtension, IElementExtension
 {
     /**
-     * Foo file extension.
+     * Foo filename extension.
      */
     String EXT = "foo";
+
+    @Override
+    default IFooProject getParent()
+    {
+        return (IFooProject)IElementExtension.super.getParent();
+    }
 }
 
 /**
  * Represents a variable declared in a Foo file.
  */
 public interface IFooVar
-    extends ISourceConstruct
+    extends ISourceConstruct, ISourceElementExtension, IElementExtension
 {
+    @Override
+    default IFooFile getParent()
+    {
+        return (IFooFile)IElementExtension.super.getParent();
+    }
 }
 
 /**
  * Represents a function defined in a Foo file.
  */
 public interface IFooDef
-    extends ISourceConstruct
+    extends ISourceConstruct, ISourceElementExtension, IElementExtension
 {
+    @Override
+    default IFooFile getParent()
+    {
+        return (IFooFile)IElementExtension.super.getParent();
+    }
 }
 ```
 
-with corresponding implementation classes defined in the package
+The corresponding implementation classes are defined in the package
 `org.eclipse.handly.internal.examples.basic.ui.model` of the same bundle:
 
 ```java
@@ -72,6 +97,10 @@ public class FooDef
 {
 }
 ```
+
+As you can see, we extend the classes `SourceFile` and `SourceConstruct`
+which provide a useful base implementation for representing source files
+and their structural elements in a Handly-based model.
 
 Once again, we need to complete the implementation by defining the appropriate
 constructors and overriding the inherited abstract methods. Let's begin
@@ -100,9 +129,9 @@ public class FooVar
     }
     
     @Override
-    protected HandleManager getHandleManager()
+    protected ElementManager hElementManager()
     {
-        return FooModelManager.INSTANCE.getHandleManager();
+        return FooModelManager.INSTANCE.getElementManager();
     }
 }
 ```
@@ -155,9 +184,9 @@ public class FooDef
     }
 
     @Override
-    protected HandleManager getHandleManager()
+    protected ElementManager hElementManager()
     {
-        return FooModelManager.INSTANCE.getHandleManager();
+        return FooModelManager.INSTANCE.getElementManager();
     }
 }
 ```
@@ -165,10 +194,10 @@ public class FooDef
 As you can see, this model element is special in that its constructor takes
 an additional parameter, `arity`. While variables can be identified solely by
 their name within the parent Foo file, functions are a different story.
-The name alone is not sufficient to address a Foo function -- we need
-to also state the number of arguments (its *arity*).
+The name alone is not sufficient to identify a Foo function -- we also need
+to state the number of arguments (its *arity*).
 
-Thus, we need to make `arity` part of the state of a `FooDef` instance,
+Therefore, we need to make `arity` part of the state of a `FooDef` instance,
 the handle for a Foo function (as you may remember, handles are value objects
 that hold immutable, 'key' information about a model element). We also need
 to extend the `equals` and `hashCode` methods to take `arity` into account
@@ -232,15 +261,15 @@ public class FooFile
     }
 
     @Override
-    protected void buildStructure(SourceElementBody body,
-        Map<IHandle, Body> newElements, Object ast, String source,
+    protected void hBuildStructure(SourceElementBody body,
+        Map<IElement, Object> newElements, Object ast, String source,
         IProgressMonitor monitor)
     {
         // empty for now
     }
 
     @Override
-    protected Object createStructuralAst(String source,
+    protected Object hCreateStructuralAst(String source,
         IProgressMonitor monitor) throws CoreException
     {
         // no AST for now
@@ -248,14 +277,14 @@ public class FooFile
     }
 
     @Override
-    protected HandleManager getHandleManager()
+    protected ElementManager hElementManager()
     {
-        return FooModelManager.INSTANCE.getHandleManager();
+        return FooModelManager.INSTANCE.getElementManager();
     }
 }
 ```
 
-We will get back to the `buildStructure` and `createStructuralAst` methods
+We will get back to the `hBuildStructure` and `hCreateStructuralAst` methods
 of this class in a moment.
 
 Now we can complete the implementation of the `FooProject` class:
@@ -264,11 +293,12 @@ Now we can complete the implementation of the `FooProject` class:
 // FooProject.java
 
     @Override
-    protected void buildStructure(Body body, Map<IHandle, Body> newElements,
-        IProgressMonitor monitor) throws CoreException
+    protected void hBuildStructure(Object body,
+        Map<IElement, Object> newElements, IProgressMonitor monitor)
+        throws CoreException
     {
         IResource[] members = project.members();
-        List<IFooFile> fooFiles = new ArrayList<IFooFile>(members.length);
+        List<IFooFile> fooFiles = new ArrayList<>(members.length);
         for (IResource member : members)
         {
             if (member instanceof IFile)
@@ -282,7 +312,7 @@ Now we can complete the implementation of the `FooProject` class:
                 }
             }
         }
-        body.setChildren(fooFiles.toArray(new IHandle[fooFiles.size()]));
+        ((Body)body).setChildren(fooFiles.toArray(Body.NO_CHILDREN));
     }
 ```
 
@@ -346,7 +376,7 @@ We'll implement them as follows:
     @Override
     public IFooFile[] getFooFiles() throws CoreException
     {
-        IHandle[] children = getChildren();
+        IElement[] children = getChildren();
         int length = children.length;
         IFooFile[] result = new IFooFile[length];
         System.arraycopy(children, 0, result, 0, length);
@@ -445,7 +475,7 @@ Now, it fails:
 
 ```
 junit.framework.AssertionFailedError: expected:<0> but was:<1>
-	at org.eclipse.handly.internal.examples.basic.ui.model.FooModelTest.testFooModel(FooModelTest.java:65)
+	at org.eclipse.handly.internal.examples.basic.ui.model.FooModelTest.testFooModel
 ```
 
 As you can see, we have deleted a Foo file and its `exists` method
@@ -469,8 +499,10 @@ Remember the `FooDeltaProcessor`? Let's make it process *file deltas* too:
         case IResource.PROJECT:
             return processProject(delta);
 
+        // new code -->
         case IResource.FILE:
             return processFile(delta);
+        // <-- new code
 
         default:
             return true;
@@ -542,34 +574,34 @@ The test case will now pass.
 
 ## Building Source File Structure
 
-Let's get back to the `FooFile` and its `buildStructure` and
-`createStructuralAst` methods.
+Let's get back to the `FooFile` and its `hBuildStructure` and
+`hCreateStructuralAst` methods.
 
 The `FooFile` is the innermost openable element in our model hierarchy.
 Elements inside a source file are *never* openable because the
 source file always builds all of its inner structure in one go
 by parsing the text contents, as we shall soon see.
 
-At the moment, we need to implement this couple of abstract methods
+At the moment, we need to implement a couple of abstract methods
 inherited from the `SourceFile`:
 
 ```java
-protected abstract Object createStructuralAst(String source,
+protected abstract Object hCreateStructuralAst(String source,
     IProgressMonitor monitor) throws CoreException;
 
-protected abstract void buildStructure(SourceElementBody body,
-    Map<IHandle, Body> newElements, Object ast, String source,
+protected abstract void hBuildStructure(SourceElementBody body,
+    Map<IElement, Object> newElements, Object ast, String source,
     IProgressMonitor monitor);
 ```
 
-The method `createStructuralAst` returns a new Abstract Syntax Tree (AST)
+The method `hCreateStructuralAst` returns a new Abstract Syntax Tree (AST)
 object created from the given source string. The AST may contain just enough
 information for computing the structure and properties of the source file
 and its descendant elements. That's why it is called *structural*. Handly
-treats the AST as an opaque `Object`-- it just calls `createStructuralAst`
-whenever necessary and passes the result to `buildStructure`.
+treats the AST as an opaque `Object`-- it just calls `hCreateStructuralAst`
+whenever necessary and passes the result to `hBuildStructure`.
 
-The method `buildStructure` should initialize the given `SourceElementBody`
+The method `hBuildStructure` should initialize the given `SourceElementBody`
 based on the given AST and the given source string from which the AST was
 created. The descendant elements of the source file are to be placed
 into the given `newElements` map as handle/body pairs.
@@ -585,8 +617,8 @@ of the source file's contents. There are two predefined properties:
 Also, source elements can define their own, specific properties to be stored
 in a `SourceElementBody`.
 
-That was a bit of theory behind these two methods. See the [System Overview]
-(http://www.eclipse.org/downloads/download.php?file=/handly/docs/handly-overview.pdf&r=1)
+That was a bit of theory behind these two methods. See the
+[Handly Core Framework Overview](http://www.eclipse.org/downloads/download.php?file=/handly/docs/handly-overview.pdf&r=1)
 for more information on the architecture, and the API Javadocs for a detailed
 description of the protocols.
 
@@ -607,7 +639,7 @@ Xtext-specific:
      * @throws CoreException if resource loading failed
      */
     @Override
-    protected Object createStructuralAst(String source,
+    protected Object hCreateStructuralAst(String source,
         IProgressMonitor monitor) throws CoreException
     {
         try
@@ -681,10 +713,10 @@ Xtext-specific:
 
 If you don't happen to know Xtext, you can safely ignore most of the
 implementation details. They needn't concern us here; suffice to know
-that `createStructuralAst` returns an EMF `Resource` that contains
+that `hCreateStructuralAst` returns an EMF `Resource` that contains
 an object graph representing the AST.
 
-The method `buildStructure` walks through this object graph and
+The method `hBuildStructure` walks through this object graph and
 in the process creates handles for source elements, initializes
 the corresponding bodies, and places the handle/body pairs
 into the `newElements` map:
@@ -693,8 +725,8 @@ into the `newElements` map:
 // FooFile.java
 
     @Override
-    protected void buildStructure(SourceElementBody body,
-        Map<IHandle, Body> newElements, Object ast, String source,
+    protected void hBuildStructure(SourceElementBody body,
+        Map<IElement, Object> newElements, Object ast, String source,
         IProgressMonitor monitor)
     {
         XtextResource resource = (XtextResource)ast;
@@ -735,7 +767,7 @@ class FooFileStructureBuilder
      * @param resourceServiceProvider Xtext's {@link IResourceServiceProvider}
      *  for the language (not <code>null</code>)
      */
-    FooFileStructureBuilder(Map<IHandle, Body> newElements,
+    FooFileStructureBuilder(Map<IElement, Object> newElements,
         IResourceServiceProvider resourceServiceProvider)
     {
         helper = new StructureHelper(newElements);
@@ -1017,9 +1049,9 @@ Let's run the body of the `testFooFile` method 100,000 times in a loop:
 ```
 
 It might seem it would never return! (Okay, it took about 5 minutes
-on our machine...) Do you feel it could do better than this?
+on our machine...) Couldn't it do better than this?
 
-If you set a breakpoint in the `FooFile.createStructuralAst` method and
+If you set a breakpoint in the `FooFile.hCreateStructuralAst` method and
 rerun the `FooFileTest` under debugger, you will see that every request
 for the Foo file's body leads to rebuilding the whole structure
 of the source file and hence, to re-parsing. It is called six (!) times
@@ -1043,89 +1075,89 @@ class FooModelCache
         // average 20 children per file
     // <-- new code
 
-    private Body modelBody; // Foo model element's body
-    private HashMap<IHandle, Body> projectCache; // Foo projects
+    private Object modelBody; // Foo model element's body
+    private HashMap<IElement, Object> projectCache; // Foo projects
     // new code -->
     private ElementCache fileCache; // Foo files
-    private HashMap<IHandle, Body> childrenCache; // children of Foo files
+    private HashMap<IElement, Object> childrenCache; // children of Foo files
     // <-- new code
 
     public FooModelCache()
     {
-        projectCache = new HashMap<IHandle, Body>(DEFAULT_PROJECT_SIZE);
+        projectCache = new HashMap<>(DEFAULT_PROJECT_SIZE);
         // new code -->
         fileCache = new ElementCache(DEFAULT_FILE_SIZE);
-        childrenCache = new HashMap<IHandle, Body>(DEFAULT_CHILDREN_SIZE);
+        childrenCache = new HashMap<>(DEFAULT_CHILDREN_SIZE);
         // <-- new code
     }
 
     @Override
-    public Body get(IHandle handle)
+    public Object get(IElement element)
     {
-        if (handle instanceof IFooModel)
+        if (element instanceof IFooModel)
             return modelBody;
-        else if (handle instanceof IFooProject)
-            return projectCache.get(handle);
+        else if (element instanceof IFooProject)
+            return projectCache.get(element);
         // new code -->
-        else if (handle instanceof IFooFile)
-            return fileCache.get(handle);
+        else if (element instanceof IFooFile)
+            return fileCache.get(element);
         else
-            return childrenCache.get(handle);
+            return childrenCache.get(element);
         // <-- new code
     }
 
     @Override
-    public Body peek(IHandle handle)
+    public Object peek(IElement element)
     {
-        if (handle instanceof IFooModel)
+        if (element instanceof IFooModel)
             return modelBody;
-        else if (handle instanceof IFooProject)
-            return projectCache.get(handle);
+        else if (element instanceof IFooProject)
+            return projectCache.get(element);
         // new code -->
-        else if (handle instanceof IFooFile)
-            return fileCache.peek(handle);
+        else if (element instanceof IFooFile)
+            return fileCache.peek(element);
         else
-            return childrenCache.get(handle);
+            return childrenCache.get(element);
         // <-- new code
     }
 
     @Override
-    public void put(IHandle handle, Body body)
+    public void put(IElement element, Object body)
     {
-        if (handle instanceof IFooModel)
+        if (element instanceof IFooModel)
             modelBody = body;
-        else if (handle instanceof IFooProject)
+        else if (element instanceof IFooProject)
         {
-            projectCache.put(handle, body);
+            projectCache.put(element, body);
             // new code -->
-            fileCache.ensureSpaceLimit(body, handle);
+            fileCache.ensureSpaceLimit(body, element);
             // <-- new code
         }
         // new code -->
-        else if (handle instanceof IFooFile)
-            fileCache.put(handle, body);
+        else if (element instanceof IFooFile)
+            fileCache.put(element, body);
         else
-            childrenCache.put(handle, body);
+            childrenCache.put(element, body);
         // <-- new code
     }
 
     @Override
-    public void remove(IHandle handle)
+    public void remove(IElement element)
     {
-        if (handle instanceof IFooModel)
+        if (element instanceof IFooModel)
             modelBody = null;
-        else if (handle instanceof IFooProject)
+        else if (element instanceof IFooProject)
         {
-            projectCache.remove(handle);
+            projectCache.remove(element);
             // new code -->
-            fileCache.resetSpaceLimit(DEFAULT_FILE_SIZE, handle);
+            fileCache.resetSpaceLimit(DEFAULT_FILE_SIZE, element);
             // <-- new code
         }
         // new code -->
-        else if (handle instanceof IFooFile)
-            fileCache.remove(handle);
+        else if (element instanceof IFooFile)
+            fileCache.remove(element);
         else
-            childrenCache.remove(handle);
+            childrenCache.remove(element);
         // <-- new code
     }
 }
@@ -1140,8 +1172,8 @@ by removing the least recently used elements. The cache will remove elements
 which successfully close and all elements which are explicitly removed.
 If the cache cannot remove enough old elements to add new elements, it will
 grow beyond its space limit. Later, it will attempt to shrink back to the
-space limit. This cache permits to put a constraint on the amount of memory
-consumed by the model.
+space limit. Such a cache allows you to put a constraint on the amount
+of memory consumed by the model.
 
 We don't need to use an LRU cache for child elements of Foo files (a `HashMap`
 is sufficient) because these elements always come and go together with
