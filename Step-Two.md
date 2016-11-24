@@ -80,27 +80,30 @@ The corresponding implementation classes are defined in the package
 
 ```java
 public class FooFile
-    extends SourceFile
-    implements IFooFile
+    extends WorkspaceSourceFile
+    implements IFooFile, IFooElementInternal
 {
 }
 
 public class FooVar
     extends SourceConstruct
-    implements IFooVar
+    implements IFooVar, IFooElementInternal
 {
 }
 
 public class FooDef
     extends SourceConstruct
-    implements IFooDef
+    implements IFooDef, IFooElementInternal
 {
 }
 ```
 
-As you can see, we extend the classes `SourceFile` and `SourceConstruct`
-which provide a useful base implementation for representing source files
-and their structural elements in a Handly-based model.
+The classes `SourceFile` and `SourceConstruct` provide a useful base
+implementation for representing source files and their structural elements
+in a Handly-based model. Since our model wll only support source files
+residing in the Eclipse workspace, it is more convenient for us to extend
+`WorkspaceSourceFile` rather than its resource-agnostic superclass,
+`SourceFile`.
 
 Once again, we need to complete the implementation by defining the appropriate
 constructors and overriding the inherited abstract methods. Let's begin
@@ -112,7 +115,7 @@ with the class `FooVar`:
  */
 public class FooVar
     extends SourceConstruct
-    implements IFooVar
+    implements IFooVar, IFooElementInternal
 {
     /**
      * Creates a handle for a variable with the given parent element 
@@ -127,12 +130,6 @@ public class FooVar
         if (name == null)
             throw new IllegalArgumentException();
     }
-    
-    @Override
-    protected ElementManager hElementManager()
-    {
-        return FooModelManager.INSTANCE.getElementManager();
-    }
 }
 ```
 
@@ -146,7 +143,7 @@ Next goes the class `FooDef`:
  */
 public class FooDef
     extends SourceConstruct
-    implements IFooDef
+    implements IFooDef, IFooElementInternal
 {
     private final int arity;
 
@@ -181,12 +178,6 @@ public class FooDef
         int result = super.hashCode();
         result = prime * result + arity;
         return result;
-    }
-
-    @Override
-    protected ElementManager hElementManager()
-    {
-        return FooModelManager.INSTANCE.getElementManager();
     }
 }
 ```
@@ -238,8 +229,8 @@ a constructor and override the inherited abstract methods:
  * Represents a Foo source file.
  */
 public class FooFile
-    extends SourceFile
-    implements IFooFile
+    extends WorkspaceSourceFile
+    implements IFooFile, IFooElementInternal
 {
     /**
      * Constructs a handle for a Foo file with the given parent element 
@@ -261,31 +252,15 @@ public class FooFile
     }
 
     @Override
-    protected void hBuildStructure(SourceElementBody body,
-        Map<IElement, Object> newElements, Object ast, String source,
+    protected void hBuildStructure(IContext context,
         IProgressMonitor monitor)
     {
         // empty for now
     }
-
-    @Override
-    protected Object hCreateStructuralAst(String source,
-        IProgressMonitor monitor) throws CoreException
-    {
-        // no AST for now
-        return null;
-    }
-
-    @Override
-    protected ElementManager hElementManager()
-    {
-        return FooModelManager.INSTANCE.getElementManager();
-    }
 }
 ```
 
-We will get back to the `hBuildStructure` and `hCreateStructuralAst` methods
-of this class in a moment.
+We will get back to the `hBuildStructure` method in a moment.
 
 Now we can complete the implementation of the `FooProject` class:
 
@@ -312,19 +287,20 @@ Now we can complete the implementation of the `FooProject` class:
                 }
             }
         }
-        ((Body)body).setChildren(fooFiles.toArray(Body.NO_CHILDREN));
+        Body body = new Body();
+        body.setChildren(fooFiles.toArray(Body.NO_CHILDREN));
+        context.get(NEW_ELEMENTS).put(this, body);
     }
 ```
 
 As you may remember, we intended Foo project to be an *openable* element
 responsible for building its structure. Here we set the currently existing
 Foo files immediately contained within the project's resource as children
-of the `FooProject` element.
+of the created body for the `FooProject` element.
 
-Again, there is no need to use the `newElements` parameter here (recall
-that it is designated for placing handle/body pairs for child elements),
-because the `FooFile` will, in turn, be an openable element and will build
-its own structure lazily, on demand.
+Again, there is no need to do anything else here, because each `FooFile` will,
+in turn, be an openable element and will build its own structure on demand
+in its `hBuildStructure` method.
 
 Now that we have a complete implementation for the class `FooProject`,
 we can test it. But let's first define some handy methods in `IFooProject`:
@@ -574,83 +550,91 @@ The test case will now pass.
 
 ## Building Source File Structure
 
-Let's get back to the `FooFile` and its `hBuildStructure` and
-`hCreateStructuralAst` methods.
+Let's get back to the `FooFile` and its `hBuildStructure` method.
 
-The `FooFile` is the innermost openable element in our model hierarchy.
+The `FooFile` is the innermost openable element in our model.
 Elements inside a source file are *never* openable because the
 source file always builds all of its inner structure in one go
-by parsing the text contents, as we shall soon see.
+by parsing the text contents, as we'll soon see.
 
-At the moment, we need to implement a couple of abstract methods
-inherited from the `SourceFile`:
-
-```java
-protected abstract Object hCreateStructuralAst(String source,
-    IProgressMonitor monitor) throws CoreException;
-
-protected abstract void hBuildStructure(SourceElementBody body,
-    Map<IElement, Object> newElements, Object ast, String source,
-    IProgressMonitor monitor);
-```
-
-The method `hCreateStructuralAst` returns a new Abstract Syntax Tree (AST)
-object created from the given source string. The AST may contain just enough
-information for computing the structure and properties of the source file
-and its descendant elements. That's why it is called *structural*. Handly
-treats the AST as an opaque `Object`-- it just calls `hCreateStructuralAst`
-whenever necessary and passes the result to `hBuildStructure`.
-
-The method `hBuildStructure` should initialize the given `SourceElementBody`
-based on the given AST and the given source string from which the AST was
-created. The descendant elements of the source file are to be placed
-into the given `newElements` map as handle/body pairs.
+The method `hBuildStructure` of a source file is supposed to create and
+initialize a `SourceElementBody` for the source file itself and also for
+each of its descendant elements, and place the initialized bodies into
+the `NEW_ELEMENTS` map in the given context.
 
 The class `SourceElementBody` extends the class `Body` and implements the
 interface `ISourceElementInfo`. It holds cached structure and properties for
-a source element. Those structure and properties relate to a known snapshot
+a source element. Those structure and properties correspond to a snapshot
 of the source file's contents. There are two predefined properties:
 
 * the full text range of the source element
 * the text range of the source element's identifier (if there is one)
 
 Also, source elements can define their own, specific properties to be stored
-in a `SourceElementBody`.
+in a `SourceElementBody`, as will be shown in a moment.
 
-That was a bit of theory behind these two methods. See the
-[Handly Core Framework Overview](http://www.eclipse.org/downloads/download.php?file=/handly/docs/handly-overview.pdf&r=1)
-for more information on the architecture, and the API Javadocs for a detailed
-description of the protocols.
+The bodies need to be initialized based on the `SOURCE_AST` or the
+`SOURCE_STRING` provided in the given context. In general, either or both
+may be present (in the latter case the `SOURCE_AST` is guaranteed to be created
+from the `SOURCE_STRING`).
 
-In our case, the Foo language is based on Xtext, so parsing is
-Xtext-specific:
+The reason for such a contract is that the `hBuildStructure` method may be
+invoked from different framework layers and, depending on the framework
+configuration, the AST may be already available and can be efficiently reused.
+However, Handly is flexible enough to allow for framework configurations where
+even something like SAX can be used, skipping the AST creation altogether.
+
+In the most general case, though, the method implementation should check for
+the `SOURCE_AST` first and, if it is not available, parse the `SOURCE_STRING`
+using whatever means it sees fit. Actually, it is not as complicated as it may
+sound.
+
+The `SOURCE_AST` is typed as `Object`, since the core framework knows nothing
+about a specific representation of the AST; it can just propagate the AST
+from an upper layer. The `SOURCE_STRING` is, well, a `String`.
+
+In our case, the Foo language is based on Xtext, so the `SOURCE_AST` would
+actually be represented by `XtextResource` and parsing of the `SOURCE_STRING`
+would be Xtext-specific. Here's the relevant code:
 
 ```java
 // FooFile.java
 
-    /**
-     * Returns a new <code>XtextResource</code> loaded from the given source
-     * string. The resource is created in a new <code>ResourceSet</code>
-     * obtained from the <code>IResourceSetProvider</code> corresponding to
-     * this file. 
-     * 
-     * @return the new <code>XtextResource</code> loaded from the given
-     *  source string (never <code>null</code>)
-     * @throws CoreException if resource loading failed
-     */
     @Override
-    protected Object hCreateStructuralAst(String source,
-        IProgressMonitor monitor) throws CoreException
+    protected void hBuildStructure(IContext context, IProgressMonitor monitor)
+        throws CoreException
     {
-        try
+        Map<IElement, Object> newElements = context.get(NEW_ELEMENTS);
+        SourceElementBody body = new SourceElementBody();
+
+        XtextResource resource = (XtextResource)context.get(SOURCE_AST);
+        if (resource == null)
         {
-            return parse(source, getFile().getCharset());
+            try
+            {
+                resource = parse(context.get(SOURCE_CONTENTS),
+                    getFile().getCharset());
+            }
+            catch (IOException e)
+            {
+                throw new CoreException(Activator.createErrorStatus(
+                    e.getMessage(), e));
+            }
         }
-        catch (IOException e)
+
+        IParseResult parseResult = resource.getParseResult();
+        if (parseResult != null)
         {
-            throw new CoreException(Activator.createErrorStatus(
-                e.getMessage(), e));
+            EObject root = parseResult.getRootASTElement();
+            if (root instanceof Module)
+            {
+                FooFileStructureBuilder builder = new FooFileStructureBuilder(
+                    newElements, resource.getResourceServiceProvider());
+                builder.buildStructure(this, body, (Module)root);
+            }
         }
+
+        newElements.put(this, body);
     }
 
     /**
@@ -707,46 +691,19 @@ Xtext-specific:
      */
     protected URI getResourceUri()
     {
-        return URI.createPlatformResourceURI(getPath().toString(), true);
+        return URI.createPlatformResourceURI(hFile().getFullPath().toString(),
+            true);
     }
 ```
 
 If you don't happen to know Xtext, you can safely ignore most of the
-implementation details. They needn't concern us here; suffice to know
-that `hCreateStructuralAst` returns an EMF `Resource` that contains
-an object graph representing the AST.
-
-The method `hBuildStructure` walks through this object graph and
-in the process creates handles for source elements, initializes
-the corresponding bodies, and places the handle/body pairs
-into the `newElements` map:
-
-```java
-// FooFile.java
-
-    @Override
-    protected void hBuildStructure(SourceElementBody body,
-        Map<IElement, Object> newElements, Object ast, String source,
-        IProgressMonitor monitor)
-    {
-        XtextResource resource = (XtextResource)ast;
-        IParseResult parseResult = resource.getParseResult();
-        if (parseResult != null)
-        {
-            EObject root = parseResult.getRootASTElement();
-            if (root instanceof Module)
-            {
-                FooFileStructureBuilder builder =
-                    new FooFileStructureBuilder(newElements,
-                        resource.getResourceServiceProvider());
-                builder.buildStructure(this, body, (Module)root);
-            }
-        }
-    }
-```
-
-As you can see, this method delegates all the hard work to the class
-`FooFileStructureBuilder`, which uses the Handly-provided `StructureHelper`:
+implementation details. The `XtextResource` contains an object graph
+representing the AST. The method `hBuildStructure` walks through this
+object graph and in the process creates handles for source elements,
+initializes the corresponding bodies, and places the handle/body pairs
+into the `NEW_ELEMENTS` map. It delegates all the hard work to the class
+`FooFileStructureBuilder`, which uses the Handly-provided `StructureHelper`
+internally:
 
 ```java
 // package org.eclipse.handly.internal.examples.basic.ui.model
@@ -845,14 +802,10 @@ class FooFileStructureBuilder
 
 The class `StructureHelper` provides a couple of handy methods for
 building the structure of a model element: `addChild` remembers the given
-element as a child of the given parent body and puts the element together
-with the given body into the `newElements` map (resolving duplicates
-along the way), while `complete` completes the given body by setting
-the elements previously remembered by `addChild` as the body's children.
-
-Don't worry if you couldn't fully understand Xtext-specific details. Basically,
-we just walk the AST and in the process compute and place into the `newElements`
-a handle/body pair for each structural element in the source file.
+element as a child of the yet-to-be-completed parent body and establishes
+an association between the child handle and the child body, while `complete`
+completes the given body by initializing it with a list of elements previously
+remembered as children of the body.
 
 Note how the `FooFileStructureBuilder` uses a custom property for storing
 the parameter names of a Foo function in the element's `SourceElementBody`.
@@ -866,8 +819,8 @@ for obtaining its value:
      * Parameter names property.
      * @see #getParameterNames()
      */
-    Property<String[]> PARAMETER_NAMES = new Property<String[]>(
-        "parameterNames");
+    Property<String[]> PARAMETER_NAMES = Property.get("parameterNames",
+        String[].class);
 
     /**
      * Returns the names of parameters in this function.
@@ -1051,15 +1004,15 @@ Let's run the body of the `testFooFile` method 100,000 times in a loop:
 It might seem it would never return! (Okay, it took about 5 minutes
 on our machine...) Couldn't it do better than this?
 
-If you set a breakpoint in the `FooFile.hCreateStructuralAst` method and
+If you set a breakpoint in the `FooFile.hBuildStructure` method and
 rerun the `FooFileTest` under debugger, you will see that every request
-for the Foo file's body leads to rebuilding the whole structure
-of the source file and hence, to re-parsing. It is called six (!) times
+for the Foo file's body leads to rebuilding of the whole structure
+of the source file and hence, to reparsing. It is done six (!) times
 within each iteration of the loop -- once for each non-handle-only
 method call.
 
 Hopefully, you already know how to deal with it. That's what
-the `FooModelCache` is for. The reason for constant re-parsing
+the `FooModelCache` is for. The reason for the incessant reparsing
 is simply that we don't cache source element bodies yet.
 
 Let's fix it:

@@ -32,7 +32,7 @@ Let's define the corresponding implementation classes in the package
 ```java
 public class FooModel
     extends Element
-    implements IFooModel
+    implements IFooModel, IModel
 {
 }
 
@@ -46,6 +46,14 @@ public class FooProject
 As you can see, we extend the class `Element`, a useful base implementation
 provided by Handly for handle-based model elements.
 
+Also, we make our root element, represented by the class `FooModel`,
+implement `IModel`, indicating that the root element will also serve
+as the *model object* in our model. The model object is the common owner
+of all elements of a model. In general, there is no requirement for the
+model object itself to be an element, but in this case we merge it with
+the root element for convenience. Note that we are careful to not expose
+this implementation detail in the API, so `IFooModel` does not extend `IModel`.
+
 At the moment, the code doesn't yet compile. We need to fill in the blanks
 and complete the implementation by providing the appropriate constructors
 and overriding the inherited abstract methods. Let's begin with the class
@@ -57,7 +65,7 @@ and overriding the inherited abstract methods. Let's begin with the class
  */
 public class FooModel
     extends Element
-    implements IFooModel
+    implements IFooModel, IModel
 {
     private final IWorkspace workspace;
 
@@ -71,13 +79,25 @@ public class FooModel
     }
 
     @Override
+    public int getApiLevel()
+    {
+        return ApiLevel.CURRENT;
+    }
+
+    @Override
+    public IContext getModelContext()
+    {
+        return Contexts.EMPTY_CONTEXT;
+    }
+
+    @Override
     public IResource hResource()
     {
         return workspace.getRoot();
     }
 
     @Override
-    protected void hValidateExistence() throws CoreException
+    protected void hValidateExistence(IContext context) throws CoreException
     {
         // always exists
     }
@@ -90,10 +110,26 @@ of `equals()` and `hashCode()` provided in the class `Element` is sufficient in
 many cases -- it uses the parent and name of the element as a basis for
 computation.
 
+The model object is a bit specific in that it must implement the `getApiLevel`
+method, which returns the Handly *API level* supported by the model. By checking
+the API level, generic code can dynamically discover which API methods are
+supported by the model it is dealing with. It is recommended to always return
+`ApiLevel.CURRENT`, which corresponds to the version of Handly the model was
+built against.
+
+The model object must also implement the `getModelContext` method.
+A context, represented in Handly by the `IContext` interface, supplies
+values (data objects or services) associated with keys. Two kinds of keys
+are supported: `org.eclipse.handly.util.Property` and `java.lang.Class`,
+both of which allow the client to specify the type of requested value,
+which makes contexts completely type safe. The *model context* provides
+information and services pertaining to the model. We currently have none,
+so we just return `EMPTY_CONTEXT`.
+
 Elements that have an underlying resource should return it from the
 `hResource()` method. In this case, the workspace root is returned.
 
-Handles can refer to non-existing elements. The `hValidateExistence()` method
+Handles can refer to non-existing elements. The `hValidateExistence` method
 should throw a `CoreException` if the element may not begin existence in the
 model (for example, if its underlying resource does not exist). In this case,
 this method does nothing as the root element always exists.
@@ -137,24 +173,10 @@ public class FooProject
     }
 
     @Override
-    protected void hValidateExistence() throws CoreException
+    protected void hValidateExistence(IContext context) throws CoreException
     {
-        if (!project.exists())
-            throw new CoreException(Activator.createErrorStatus(
-                MessageFormat.format(
-                    "Project ''{0}'' does not exist in workspace", hName()),
-                null));
-
-        if (!project.isOpen())
-            throw new CoreException(Activator.createErrorStatus(
-                MessageFormat.format("Project ''{0}'' is not open", hName()),
-                null));
-
-        if (!project.hasNature(FooProjectNature.ID))
-            throw new CoreException(Activator.createErrorStatus(
-                MessageFormat.format(
-                    "Project ''{0}'' does not have the Foo nature", hName()),
-                null));
+        if (!project.hasNature(NATURE_ID))
+            throw hDoesNotExistException();
     }
 }
 ```
@@ -232,62 +254,64 @@ The Foo nature doesn't configure any specific builders; the Xtext builder
 will be installed by the required Xtext nature.
 
 We still need to implement a couple of remaining abstract methods for our
-model elements: `hBuildStructure` and `hElementManager`. Those methods are
+model elements: `hBuildStructure` and `hModelManager`. Those methods are
 central to implementation of the *handle/body idiom* in Handly.
 
 The basic idea is that mutable structure and properties of a model element
 are stored separately in an internal 'body', while the handle holds immutable,
 'key' information about the element (recall that handles are value objects).
 
-The method `hBuildStructure` must initialize the given body based on
-the element's current contents. For the `FooModel`, we set the currently open
-Foo projects as its children:
+The method `hBuildStructure` is responsible for creating a body for the element
+and initializing it based on the element's current contents. For the `FooModel`,
+we set the currently open Foo projects as the children of the created body:
 
 ```java
 // FooModel.java
 
     @Override
-    protected void hBuildStructure(Object body,
-        Map<IElement, Object> newElements, IProgressMonitor monitor)
+    protected void hBuildStructure(IContext context, IProgressMonitor monitor)
         throws CoreException
     {
         IProject[] projects = workspace.getRoot().getProjects();
         List<IFooProject> fooProjects = new ArrayList<>(projects.length);
         for (IProject project : projects)
         {
-            if (project.isOpen() && project.hasNature(FooProjectNature.ID))
+            if (project.isOpen() && project.hasNature(IFooProject.NATURE_ID))
             {
                 fooProjects.add(new FooProject(this, project));
             }
         }
-        ((Body)body).setChildren(fooProjects.toArray(Body.NO_CHILDREN));
+        Body body = new Body();
+        body.setChildren(fooProjects.toArray(Body.NO_CHILDREN));
+        context.get(NEW_ELEMENTS).put(this, body);
     }
 ```
 
-Note that we're downcasting the `body` parameter to `Body`. In general,
-any `Object` can be used as the body of an `Element`. By default, an instance
-of the class `Body` is used, but you can override that in the `hNewBody()`
-and `hChildren(Object)` methods if necessary.
+As you can see, the `hBuildStructure` method has an *operation context*
+as one its parameters. We are using the context-provided `NEW_ELEMENTS` map
+to associate the created body with the element, as required by the method's
+contract.
 
-We don't use the additional parameter `newElements` here because we intend
-the `FooProject` to be responsible for building its structure instead of
-having the `FooModel` to build the structure for its child projects
-and put it (as handle/body pairs) into the `newElements` map.
+In general, any `Object` can be used as the body of an `Element`. Usually,
+an instance of the class `Body` or its subclass is used. Otherwise, we would
+also need to override the `hChildren(Object)` method, which returns the
+element's children stored in the given body.
 
-The `FooProject` and `FooModel` elements are said to be *openable* because
+Note that we only create and intitialize a body for the `FooModel` itself
+rather than let the `FooModel` to also build the structure for its child
+projects and put it (as handle/body pairs) into the `NEW_ELEMENTS` map.
+Each `FooProject` will be responsible for building its own structure.
+
+The `FooModel` and `FooProject` elements are said to be *openable* because
 they know how to open themselves (build their structure and properties)
 when asked to do so. In that way, the model is populated with its elements
 lazily, on demand. In contrast, elements inside a source file are *never*
 openable because the source file builds all of its inner structure in one go
-by parsing the text contents, as we shall see in the next step. See the
-[Handly Core Framework Overview](http://www.eclipse.org/downloads/download.php?file=/handly/docs/handly-overview.pdf&r=1)
-for more information on the architecture.
+by parsing the text contents, as we'll see in the next step.
 
 The Handly-provided class `ElementManager` manages handle/body relationships
 for a handle-based model. Generally, each model will have its own instance
-of the `ElementManager` and each element of the model will return that instance
-from its `hElementManager()` method. In that way, the element manager is shared
-between all elements of the model.
+of the `ElementManager` that must be shared between all elements of the model.
 
 Let's define a special manager class for the Foo model that will hold
 the single instance of the `IFooModel` and the single instance of the
@@ -302,13 +326,14 @@ the single instance of the `IFooModel` and the single instance of the
  * @threadsafe This class is intended to be thread-safe
  */
 public class FooModelManager
+    implements IModelManager
 {
     /**
      * The sole instance of the manager. 
      */
     public static final FooModelManager INSTANCE = new FooModelManager();
 
-    private IFooModel fooModel;
+    private FooModel fooModel;
     private ElementManager elementManager;
 
     public void startup() throws Exception
@@ -323,13 +348,15 @@ public class FooModelManager
         fooModel = null;
     }
 
-    public IFooModel getFooModel()
+    @Override
+    public FooModel getModel()
     {
         if (fooModel == null)
             throw new IllegalStateException();
         return fooModel;
     }
 
+    @Override
     public ElementManager getElementManager()
     {
         if (elementManager == null)
@@ -341,19 +368,6 @@ public class FooModelManager
     {
     }
 }
-```
-
-Now we can implement the remaining abstract method `hElementManager`
-of the `FooModel` class:
-
-```java
-// FooModel.java
-
-    @Override
-    protected ElementManager hElementManager()
-    {
-        return FooModelManager.INSTANCE.getElementManager();
-    }
 ```
 
 An instance of the `ElementManager` must be parameterized with an `IBodyCache`--
@@ -422,28 +436,54 @@ class FooModelCache
 }
 ```
 
+Now we can implement the remaining abstract method `hModelManager`
+of the `FooModel` class. However, since every element of our model would
+implement that method in exactly the same way, it might be useful to extract
+the implementation to an internal 'mix-in' interface:
+
+```java
+interface IFooElementInternal
+    extends IModelManager.Provider
+{
+    @Override
+    default IModelManager hModelManager()
+    {
+        return FooModelManager.INSTANCE;
+    }
+}
+```
+and have the `FooModel` implement it:
+
+```java
+public class FooModel
+    extends Element
+    implements IFooModel, IFooElementInternal, IModel
+{
+    // ...
+}
+```
+
 Now that we have a complete implementation for the class `FooModel`, let's
 test it. But before we can do it, two more items require our attention.
 
 First, to have the class `FooProject` compile without errors, we need to
-implement the inherited abstract methods:
+make it implement `IFooElementInternal` and provide an implementation for
+the `hBuildStructure` method:
 
 ```java
-// FooProject.java
+public class FooProject
+    extends Element
+    implements IFooProject, IFooElementInternal
+{
+    // ...
 
     @Override
-    protected ElementManager hElementManager()
-    {
-        return FooModelManager.INSTANCE.getElementManager();
-    }
-
-    @Override
-    protected void hBuildStructure(Object body,
-        Map<IElement, Object> newElements, IProgressMonitor monitor)
+    protected void hBuildStructure(IContext context, IProgressMonitor monitor)
         throws CoreException
     {
         // no children for now
     }
+}
 ```
 
 For the moment, a `FooProject` won't have any child elements, so its
@@ -581,7 +621,7 @@ public class FooModelCore
      */
     public static IFooModel getFooModel()
     {
-        return FooModelManager.INSTANCE.getFooModel();
+        return FooModelManager.INSTANCE.getModel();
     }
     
     /**
@@ -782,7 +822,7 @@ and subscribe to `POST_CHANGE` events in the workspace:
 
 ```java
 public class FooModelManager
-    implements IResourceChangeListener
+    implements IModelManager, IResourceChangeListener
 {
     // ...
 

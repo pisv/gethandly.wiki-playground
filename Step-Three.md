@@ -494,67 +494,20 @@ moved elements.
 Okay, it's time to put the theory in practice and implement
 a change notification mechanism for our model.
 
-First, let's add a subscription facility for installing change listeners
-on the Foo model:
-
-```java
-// IFooModel.java
-
-    /**
-     * Adds the given listener for changes to elements in the Foo Model. 
-     * Has no effect if an identical listener is already registered. 
-     * <p>
-     * Once registered, a listener starts receiving notification
-     * of changes to elements in the Foo Model. The listener continues
-     * to receive notifications until it is removed.
-     * </p>
-     *
-     * @param listener the listener (not <code>null</code>)
-     * @see #removeElementChangeListener(IElementChangeListener)
-     */
-    void addElementChangeListener(IElementChangeListener listener);
-
-    /**
-     * Removes the given element change listener.
-     * Has no effect if an identical listener is not registered.
-     *
-     * @param listener the listener (not <code>null</code>)
-     */
-    void removeElementChangeListener(IElementChangeListener listener);
-```
-
-The implementation just delegates to the `FooModelManager`:
-
-```java
-// FooModel.java
-
-    @Override
-    public void addElementChangeListener(IElementChangeListener listener)
-    {
-        FooModelManager.INSTANCE.addElementChangeListener(listener);
-    }
-
-    @Override
-    public void removeElementChangeListener(IElementChangeListener listener)
-    {
-        FooModelManager.INSTANCE.removeElementChangeListener(listener);
-    }
-```
-
 The `FooModelManager` is already a resource change listener, so it makes
 sense to encapsulate the change notification mechanism in there:
 
 ```java
 // FooModelManager.java
 
-    private ListenerList<IElementChangeListener> listeners;
+    private NotificationManager notificationManager;
 
     public void startup() throws Exception
     {
         fooModel = new FooModel();
         elementManager = new ElementManager(new FooModelCache());
         // new code -->
-        listeners = new ListenerList<>();
+         notificationManager = new NotificationManager();
         // <-- new code
         fooModel.getWorkspace().addResourceChangeListener(this,
             IResourceChangeEvent.POST_CHANGE);
@@ -564,47 +517,23 @@ sense to encapsulate the change notification mechanism in there:
     {
         fooModel.getWorkspace().removeResourceChangeListener(this);
         // new code -->
-        listeners = null;
+        notificationManager = null;
         // <-- new code
         elementManager = null;
         fooModel = null;
     }
 
-    public void addElementChangeListener(IElementChangeListener listener)
+    public NotificationManager getNotificationManager()
     {
-        if (listeners == null)
+        if (notificationManager == null)
             throw new IllegalStateException();
-        listeners.add(listener);
-    }
-
-    public void removeElementChangeListener(IElementChangeListener listener)
-    {
-        if (listeners == null)
-            throw new IllegalStateException();
-        listeners.remove(listener);
-    }
-
-    public void fireElementChangeEvent(final IElementChangeEvent event)
-    {
-        if (listeners == null)
-            throw new IllegalStateException();
-        for (IElementChangeListener listener : listeners)
-        {
-            SafeRunner.run(new ISafeRunnable()
-            {
-                public void handleException(Throwable exception)
-                {
-                    // already logged by Platform
-                }
-
-                public void run() throws Exception
-                {
-                    listener.elementChanged(event);
-                }
-            });
-        }
+        return notificationManager;
     }
 ```
+
+The Handly-provided class `NotificationManager` supports registration of
+element change listeners and notification of the registered listeners about
+an element change event.
 
 We are going to fire an element change event in response to those
 resource changes in the workspace that actually affect our model. To build
@@ -649,8 +578,6 @@ Now we can complete the implementation of the `FooModelManager`:
     @Override
     public void resourceChanged(IResourceChangeEvent event)
     {
-        if (event.getType() != IResourceChangeEvent.POST_CHANGE)
-            return;
         FooDeltaProcessor deltaProcessor = new FooDeltaProcessor();
         try
         {
@@ -663,10 +590,59 @@ Now we can complete the implementation of the `FooModelManager`:
         // new code -->
         if (!deltaProcessor.isEmptyDelta())
         {
-            fireElementChangeEvent(new ElementChangeEvent(
-                ElementChangeEvent.POST_CHANGE, deltaProcessor.getDelta()));
+            getNotificationManager().fireElementChangeEvent(
+                new ElementChangeEvent(ElementChangeEvent.POST_CHANGE,
+                    deltaProcessor.getDelta()));
         }
         // <-- new code
+    }
+```
+
+Let's expose the subscription facility in the API of our model:
+
+```java
+// IFooModel.java
+
+    /**
+     * Adds the given listener for changes to elements in the Foo Model. 
+     * Has no effect if an identical listener is already registered. 
+     * <p>
+     * Once registered, a listener starts receiving notification
+     * of changes to elements in the Foo Model. The listener continues
+     * to receive notifications until it is removed.
+     * </p>
+     *
+     * @param listener the listener (not <code>null</code>)
+     * @see #removeElementChangeListener(IElementChangeListener)
+     */
+    void addElementChangeListener(IElementChangeListener listener);
+
+    /**
+     * Removes the given element change listener.
+     * Has no effect if an identical listener is not registered.
+     *
+     * @param listener the listener (not <code>null</code>)
+     */
+    void removeElementChangeListener(IElementChangeListener listener);
+```
+
+The implementation just delegates to the `FooModelManager`:
+
+```java
+// FooModel.java
+
+    @Override
+    public void addElementChangeListener(IElementChangeListener listener)
+    {
+        FooModelManager.INSTANCE.getNotificationManager()
+            .addElementChangeListener(listener);
+    }
+
+    @Override
+    public void removeElementChangeListener(IElementChangeListener listener)
+    {
+        FooModelManager.INSTANCE.getNotificationManager()
+            .removeElementChangeListener(listener);
     }
 ```
 

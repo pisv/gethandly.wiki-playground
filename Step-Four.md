@@ -11,7 +11,7 @@ in the [Step Four repository](https://github.com/pisv/gethandly.4th).
 
 In Handly, a source file (as a model element) can be switched into a
 *working copy* mode. Switching to working copy means that the source file's
-structure and properties will no longer correspond to the file's saved contents.
+structure and properties shall no longer correspond to the file's saved contents.
 Instead, those structure and properties will reflect the current contents
 of the source file's editor. To enable this, the editor needs to be integrated
 with Handly.
@@ -99,83 +99,65 @@ Foo model will get notified about working copy changes. Even better, the
 notifications will describe exactly how the working copy changed
 (i.e. what variables/functions were added/removed etc.)
 
-To enable notifications about working copy changes, we will override the method
-`hReconcileOperation()` in the class `FooFile` and return a *notifying*
-reconcile operation that will use an `ElementDifferencer` to build a delta tree
-between the "pre-reconciled" and "post-reconciled" state of the working copy.
-It will then fire the built delta as a `POST_RECONCILE` event:
+To enable notifications about working copy changes, we just need to register
+the notification manager in the *model context*:
 
 ```java
-// FooFile.java
+// FooModelManager.java
 
-    @Override
-    public ReconcileOperation hReconcileOperation()
+    private Context modelContext;
+
+    public void startup() throws Exception
     {
-        return new NotifyingReconcileOperation();
+        fooModel = new FooModel();
+        elementManager = new ElementManager(new FooModelCache());
+         notificationManager = new NotificationManager();
+        // new code -->
+        modelContext = new Context();
+        modelContext.bind(INotificationManager.class).to(
+            notificationManager);
+        // <-- new code
+        fooModel.getWorkspace().addResourceChangeListener(this,
+            IResourceChangeEvent.POST_CHANGE);
     }
 
-    private class NotifyingReconcileOperation
-        extends ReconcileOperation
+    public void shutdown() throws Exception
     {
-        @Override
-        public void reconcile(Object ast, NonExpiringSnapshot snapshot,
-            boolean forced, IProgressMonitor monitor) throws CoreException
-        {
-            ElementDifferencer differ = new ElementDifferencer(
-                new ElementDelta.Builder(new ElementDelta(FooFile.this)));
+        fooModel.getWorkspace().removeResourceChangeListener(this);
+        // new code -->
+        modelContext = null;
+        // <-- new code
+        notificationManager = null;
+        elementManager = null;
+        fooModel = null;
+    }
 
-            super.reconcile(ast, snapshot, forced, monitor);
-
-            differ.buildDelta();
-            if (!differ.isEmptyDelta())
-            {
-                FooModelManager.INSTANCE.fireElementChangeEvent(
-                    new ElementChangeEvent(
-                        ElementChangeEvent.POST_RECONCILE,
-                        differ.getDelta()));
-            }
-        }
+    public IContext getModelContext()
+    {
+        if (modelContext == null)
+            throw new IllegalStateException();
+        return modelContext;
     }
 ```
 
-The Handly-provided class `ElementDifferencer` builds a delta tree between
-the version of a model element at the time the differencer was created and
-the current version of the element. It performs this operation by locally
-caching the contents of the element when the differencer is created. When the
-method `buildDelta()` is called, it creates a delta over the cached contents
-and the new contents.
-
-Launch the runtime workbench and repeat the test. Declare a new variable
-and it will now be shown instantly in the **Foo Navigator**. Great,
-now close the editor without saving changes. The new variable will
-still be displayed in the view. Not good!
-
-To fix it, we need to fire events about switching a Foo file to/from the
-working copy mode. To do that, we will extend the `SourceFile`'s method
-`hWorkingCopyModeChanged()`:
+and expose the model context in `FooModel`:
 
 ```java
+// FooModel.java
 
     @Override
-    protected void hWorkingCopyModeChanged()
+    public IContext getModelContext()
     {
-        super.hWorkingCopyModeChanged();
-
-        ElementDelta.Builder builder = new ElementDelta.Builder(
-            new ElementDelta(getRoot()));
-        if (getFile().exists())
-            builder.changed(this, IElementDeltaConstants.F_WORKING_COPY);
-        else if (isWorkingCopy())
-            builder.added(this, IElementDeltaConstants.F_WORKING_COPY);
-        else
-            builder.removed(this, IElementDeltaConstants.F_WORKING_COPY);
-        FooModelManager.INSTANCE.fireElementChangeEvent(new ElementChangeEvent(
-            ElementChangeEvent.POST_CHANGE, builder.getDelta()));
+        return FooModelManager.INSTANCE.getModelContext();
     }
 ```
 
-This should be self-explanatory. And while we are here, let's also handle
-the working copy as a special case in the `FooDeltaProcessor`:
+That will make the notification manager accessible to the generic working copy
+change notification facility in the class `SourceFile` (for details, see the
+`hWorkingCopyModeChanged` method and the inner class `NotifyingReconcileOperation`).
+
+And while we are here, let's also handle the working copy as a special case
+in the `FooDeltaProcessor`:
 
 ```java
 // FooDeltaProcessor.java
@@ -216,13 +198,18 @@ For example:
 public class FooFileDocumentProvider
     extends SourceFileDocumentProvider
 {
-    public FooFileDocumentProvider()
+    @Override
+    protected ISourceFile getSourceFile(Object element)
     {
-        super(new FooInputElementProvider());
-        // ...
+        if (!(element instanceof IEditorInput))
+            return null;
+        IInputElementProvider provider =
+            Activator.getDefault().getFooInputElementProvider();
+        element = provider.getElement((IEditorInput)element);
+        if (!(element instanceof ISourceFile))
+            return null;
+        return (ISourceFile)element;
     }
-
-    // ...
 }
 ```
 
@@ -230,9 +217,9 @@ You'll also need to implement a Handly-based reconciler for the editor:
 
 ```java
 public class FooReconciler
-    extends HandlyReconciler
+    extends EditorWorkingCopyReconciler
 {
-    public FooReconciler(ITextEditor editor, IWorkingCopyManager manager)
+    public FooReconciler(IEditorPart editor, IWorkingCopyManager manager)
     {
         super(editor, manager);
     }
@@ -301,339 +288,15 @@ public class FooEditor
 
 ## Outline View
 
-Now that our model has truly come to life with all that infrastructure
-in place, it should be very easy to create a Foo Outline page so that
-it would display the same kind of elements as the **Foo Navigator**.
-Basically, we've got a model and would like to have a number of views of it.
-
-The `FooOutlinePage` will use existing content and label providers, and
-will refresh itself when its contents is affected by a change in the Foo model.
-It will also reset its input when the corresponding editor input changes.
+Now that our model has truly come to life with all the infrastructure
+in place, it should be very easy to create a Foo Outline page using
+the Common Outline framework provided by Handly. The outline will display
+the same kind of elements as the **Foo Navigator** and can reuse existing
+content and label providers. Basically, we've got a model and would like
+to have a number of views on it.
 
 ```java
-// package org.eclipse.handly.internal.examples.basic.ui.outline
-
-/**
- * Foo Outline page.
- */
 public class FooOutlinePage
-    extends ContentOutlinePage
-    implements IXtextEditorAware, IElementChangeListener
-{
-    private XtextEditor editor;
-    private IPropertyListener editorInputListener = new IPropertyListener()
-    {
-        public void propertyChanged(Object source, int propId)
-        {
-            if (propId == IEditorPart.PROP_INPUT)
-            {
-                getTreeViewer().setInput(computeInput());
-            }
-        }
-    };
-
-    @Inject
-    private FooContentProvider contentProvider;
-    @Inject
-    private FooLabelProvider labelProvider;
-
-    @Override
-    public void setEditor(XtextEditor editor)
-    {
-        this.editor = editor;
-    }
-
-    @Override
-    public void createControl(Composite parent)
-    {
-        super.createControl(parent);
-        getTreeViewer().setContentProvider(contentProvider);
-        getTreeViewer().setLabelProvider(labelProvider);
-        getTreeViewer().setInput(computeInput());
-        editor.addPropertyListener(editorInputListener);
-        FooModelCore.getFooModel().addElementChangeListener(this);
-    }
-
-    @Override
-    public void dispose()
-    {
-        FooModelCore.getFooModel().removeElementChangeListener(this);
-        editor.removePropertyListener(editorInputListener);
-        editor.outlinePageClosed();
-        super.dispose();
-    }
-
-    @Override
-    public void elementChanged(IElementChangeEvent event)
-    {
-        if (affects(event.getDelta(), (IElement)getTreeViewer().getInput()))
-        {
-            final Control control = getTreeViewer().getControl();
-            control.getDisplay().asyncExec(new Runnable()
-            {
-                public void run()
-                {
-                    if (!control.isDisposed())
-                    {
-                        refresh();
-                    }
-                }
-            });
-        }
-    }
-
-    private boolean affects(IElementDelta delta, IElement element)
-    {
-        if (ElementDeltas.getElement(delta).equals(element))
-            return true;
-        IElementDelta[] children = ElementDeltas.getAffectedChildren(delta);
-        for (IElementDelta child : children)
-        {
-            if (affects(child, element))
-                return true;
-        }
-        return false;
-    }
-
-    private Object computeInput()
-    {
-        IEditorInput editorInput = editor.getEditorInput();
-        if (editorInput instanceof IFileEditorInput)
-        {
-            IFile file = ((IFileEditorInput)editorInput).getFile();
-            return FooModelCore.create(file);
-        }
-        return null;
-    }
-
-    private void refresh()
-    {
-        Control control = getControl();
-        control.setRedraw(false);
-        BusyIndicator.showWhile(control.getDisplay(), new Runnable()
-        {
-            public void run()
-            {
-                TreePath[] treePaths =
-                    getTreeViewer().getExpandedTreePaths();
-                getTreeViewer().refresh();
-                getTreeViewer().setExpandedTreePaths(treePaths);
-            }
-        });
-        control.setRedraw(true);
-    }
-}
-```
-
-For this code to compile, we have to add `org.eclipse.ui.ide` to the list
-of required bundles of the `org.eclipse.handly.examples.basic.ui` plug-in:
-
-```
-Require-Bundle: org.eclipse.handly.examples.basic,
- org.eclipse.handly,
- org.eclipse.handly.ui,
- org.eclipse.handly.xtext.ui,
- org.eclipse.xtext.ui,
- org.eclipse.xtext.ui.shared,
- org.eclipse.ui.navigator,
- org.eclipse.ui.ide
-```
-
-The Outline page needs to be bound in the Xtext UI module for the language:
-
-```java
-// FooUiModule.java
-
-    @Override
-    public Class<? extends IContentOutlinePage> bindIContentOutlinePage()
-    {
-        return FooOutlinePage.class;
-    }
-```
-
-Launch the runtime workbench and test what we have done so far.
-
-Okay, it works, but it needs some *link-with-editor* functionality to become
-really useful. Let's add it.
-
-We will encapsulate this new functionality in the inner class `LinkingHelper`:
-
-```java
-// FooOutlinePage.java
-
-    private LinkingHelper linkingHelper;
-
-    @Override
-    public void createControl(Composite parent)
-    {
-        super.createControl(parent);
-        getTreeViewer().setContentProvider(contentProvider);
-        getTreeViewer().setLabelProvider(labelProvider);
-        getTreeViewer().setInput(computeInput());
-        // new code -->
-        linkingHelper = new LinkingHelper();
-        // <-- new code
-        editor.addPropertyListener(editorInputListener);
-        FooModelCore.getFooModel().addElementChangeListener(this);
-    }
-
-    @Override
-    public void dispose()
-    {
-        FooModelCore.getFooModel().removeElementChangeListener(this);
-        editor.removePropertyListener(editorInputListener);
-        // new code -->
-        if (linkingHelper != null)
-            linkingHelper.dispose();
-        // <-- new code
-        editor.outlinePageClosed();
-        super.dispose();
-    }
-```
-
-The class `LinkingHelper` will extend the Platform-provided class
-`OpenAndLinkWithEditorHelper`:
-
-
-```java
-// FooOutlinePage.java
-
-   private class LinkingHelper
-        extends OpenAndLinkWithEditorHelper
-    {
-        private ISelectionChangedListener editorListener =
-            new ISelectionChangedListener()
-            {
-                public void selectionChanged(SelectionChangedEvent event)
-                {
-                    if (!getTreeViewer().getControl().isFocusControl())
-                    {
-                        linkToOutline(event.getSelection());
-                    }
-                }
-            };
-
-        public LinkingHelper()
-        {
-            super(getTreeViewer());
-            setLinkWithEditor(true);
-            ISelectionProvider selectionProvider =
-                editor.getSite().getSelectionProvider();
-            if (selectionProvider instanceof IPostSelectionProvider)
-                ((IPostSelectionProvider)selectionProvider).
-                    addPostSelectionChangedListener(editorListener);
-            else
-                selectionProvider.addSelectionChangedListener(
-                    editorListener);
-        }
-
-        @Override
-        public void dispose()
-        {
-            ISelectionProvider selectionProvider =
-                editor.getSite().getSelectionProvider();
-            if (selectionProvider instanceof IPostSelectionProvider)
-                ((IPostSelectionProvider)selectionProvider).
-                    removePostSelectionChangedListener(editorListener);
-            else
-                selectionProvider.removeSelectionChangedListener(
-                    editorListener);
-            super.dispose();
-        }
-
-        @Override
-        public void setLinkWithEditor(boolean enabled)
-        {
-            super.setLinkWithEditor(enabled);
-            if (enabled)
-                linkToOutline(
-                    editor.getSite().getSelectionProvider().getSelection());
-        }
-
-        @Override
-        protected void activate(ISelection selection)
-        {
-            linkToEditor(selection);
-        }
-
-        @Override
-        protected void open(ISelection selection, boolean activate)
-        {
-            linkToEditor(selection);
-        }
-
-        @Override
-        protected void linkToEditor(ISelection selection)
-        {
-            if (selection == null || selection.isEmpty())
-                return;
-            Object element =
-                ((IStructuredSelection)selection).getFirstElement();
-            if (!(element instanceof ISourceElement))
-                return;
-            TextRange identifyingRange = Elements.getSourceElementInfo2(
-                (ISourceElement)element).getIdentifyingRange();
-            if (identifyingRange == null)
-                return;
-            editor.selectAndReveal(identifyingRange.getOffset(),
-                identifyingRange.getLength());
-        }
-
-        @SuppressWarnings("unchecked")
-        protected void linkToOutline(ISelection selection)
-        {
-            if (selection == null || selection.isEmpty())
-                return;
-            IStructuredSelection linkedSelection = null;
-            if (selection instanceof ITextSelection)
-                linkedSelection = getLinkedSelection(
-                    (ITextSelection)selection);
-            if (linkedSelection != null)
-            {
-                IStructuredSelection currentSelection =
-                    (IStructuredSelection)getTreeViewer().getSelection();
-                if (currentSelection == null
-                    || !currentSelection.toList().containsAll(
-                        linkedSelection.toList()))
-                {
-                    getTreeViewer().setSelection(linkedSelection, true);
-                }
-            }
-        }
-
-        private IStructuredSelection getLinkedSelection(
-            ITextSelection selection)
-        {
-            Object input = getTreeViewer().getInput();
-            if (!(input instanceof ISourceElement))
-                return null;
-            ISourceElement element = Elements.getSourceElementAt2(
-                (ISourceElement)input, selection.getOffset(), null);
-            if (element == null)
-                return null;
-            return new StructuredSelection(element);
-        }
-    }
-```
-
-Basically, it listens to selection changes in the editor and updates
-the outline's selection accordingly, and vice versa.
-
-What's really interesting here is that the class `LinkingHelper` performs
-its operations in terms of generic `ISourceElement`s -- it doesn't need
-to depend on specific elements of the Foo model. Hence, it is a good
-candidate for reuse, and could have been generalized and provided
-as part of a class library, thanks to the uniform Handly API.
-
-Launch the runtime workbench and test the newly added functionality.
-
-_We have implemented a basic outline page from scratch. Since version 0.3,
-Handly provides a Common Outline framework. As a teaser, here is the
-corresponding implementation with the framework -- this class is both
-richer in ability and less in size:_
-
-```java
-public class FooOutlinePage2
     extends HandlyXtextOutlinePage
 {
     @Inject
@@ -667,10 +330,30 @@ public class FooOutlinePage2
 }
 ```
 
+The code should be self-explanatory. The superclass `HandlyXtextOutlinePage`
+provides rich outline functionality out-of-the-box, including 'Link with Editor'
+and 'Sort'. The outline will refresh itself when its contents is affected
+by a change in the Foo model. It will also reset its input when the
+corresponding editor input changes.
+
+The Outline page needs to be bound in the Xtext UI module for the language:
+
+```java
+// FooUiModule.java
+
+    @Override
+    public Class<? extends IContentOutlinePage> bindIContentOutlinePage()
+    {
+        return FooOutlinePage.class;
+    }
+```
+
+Launch the runtime workbench and test the newly added functionality.
+
 ## Closing Words
 
 We would like to close this guide with a quote from the classic book
-_Contributing to Eclipse_ by Erich Gamma and Kent Beck. It deeply
+*Contributing to Eclipse* by Erich Gamma and Kent Beck. It deeply
 resonates with our intent:
 
 > Overcoming this feeling of dislocation is the primary goal...
@@ -679,14 +362,18 @@ resonates with our intent:
 > you a map ... marked with six streets, a restaurant, and a hotel. You won't
 > know everything, but you'll know enough to survive, and enough to learn more.
 
-We hope that this tutorial did help you get started in a similar way.
+We hope this tutorial will help you get started in a similar way.
+
 You should know enough now to explore Handly and venture out on your own.
 To dive deeper, let us point you to the project's [web site]
 (https://eclipse.org/handly/) and, of course, [source code]
 (https://projects.eclipse.org/projects/technology.handly/developer).
 In particular, you might be interested in a more advanced exemplary
 implementation that Handly provides: example model for Java
-(`org.eclipse.handly.examples.javamodel`).
+(`org.eclipse.handly.examples.javamodel`). There is also a concise
+[architectural overview](http://www.eclipse.org/downloads/download.php?file=/handly/docs/handly-overview.pdf&r=1)
+of the core framework that can be used as a quick refresher of the concepts
+learnt from this guide.
 
 If you have found an error in the text or in a code example,
 or would like to suggest an enhancement, please [raise an issue]
@@ -694,7 +381,7 @@ or would like to suggest an enhancement, please [raise an issue]
 [guide's repository](https://github.com/pisv/gethandly).
 We also accept pull requests. It is open source, after all! ;-)
 
-If you could not find the answer to your question or would like to provide
+If you could not find an answer to your question or would like to provide
 feedback about this tutorial or about Handly in general, consider using the
 project's [forum](http://eclipse.org/forums/eclipse.handly) or [mailing list]
 (https://dev.eclipse.org/mailman/listinfo/handly-dev).
