@@ -6,8 +6,8 @@ and some resource delta processing for keeping the model up-to-date.
 We will use it as a starting point for this step, where we will build
 a complete *code model* for the Foo language, from the workspace root level
 down to structural elements inside source files. The complete source code
-for this step of the running example is available in the [Step Two repository]
-(https://github.com/pisv/gethandly.2nd).
+for this step of the running example is available in the
+[Step Two repository](https://github.com/pisv/gethandly.2nd).
 
 As usual, we begin by defining the interfaces for the new model elements
 (in the package `org.eclipse.handly.examples.basic.ui.model`
@@ -17,8 +17,8 @@ these interfaces extend the relevant 'extension interfaces' such as
 to introduce a number of generally useful default methods for convenience,
 but could as well define the model element interfaces entirely from scratch.
 
-In any case, it is usually a good idea for the model API to extend the
-relevant common interfaces for model elements, such as `IElement`,
+**Note:** In any case, it is usually a good idea for the model API to extend
+the relevant common interfaces for model elements, such as `IElement`,
 `ISourceElement`, `ISourceFile`, and `ISourceConstruct` (the 'extension
 interfaces' we are extending already extend the corresponding common
 interfaces). This will make the model easier to use with APIs expressed
@@ -118,9 +118,9 @@ public class FooVar
     implements IFooVar, IFooElementInternal
 {
     /**
-     * Creates a handle for a variable with the given parent element 
+     * Creates a handle for a variable with the given parent element
      * and the given name.
-     * 
+     *
      * @param parent the parent of the element (not <code>null</code>)
      * @param name the name of the element (not <code>null</code>)
      */
@@ -148,9 +148,9 @@ public class FooDef
     private final int arity;
 
     /**
-     * Creates a handle for a function with the given parent element, 
+     * Creates a handle for a function with the given parent element,
      * the given name, and the given arity.
-     * 
+     *
      * @param parent the parent of the element (not <code>null</code>)
      * @param name the name of the element (not <code>null</code>)
      * @param arity the arity of the function
@@ -233,13 +233,13 @@ public class FooFile
     implements IFooFile, IFooElementInternal
 {
     /**
-     * Constructs a handle for a Foo file with the given parent element 
+     * Constructs a handle for a Foo file with the given parent element
      * and the given underlying workspace file.
-     * 
+     *
      * @param parent the parent of the element (not <code>null</code>)
      * @param file the workspace file underlying the element
      *  (not <code>null</code>)
-     * @throws IllegalArgumentException if the handle cannot be constructed 
+     * @throws IllegalArgumentException if the handle cannot be constructed
      *  on the given workspace file
      */
     public FooFile(FooProject parent, IFile file)
@@ -252,7 +252,7 @@ public class FooFile
     }
 
     @Override
-    protected void hBuildStructure(IContext context,
+    public void hBuildSourceStructure(IContext context,
         IProgressMonitor monitor)
     {
         // empty for now
@@ -260,7 +260,7 @@ public class FooFile
 }
 ```
 
-We will get back to the `hBuildStructure` method in a moment.
+We will get back to the `hBuildSourceStructure` method in a moment.
 
 Now we can complete the implementation of the `FooProject` class:
 
@@ -268,9 +268,8 @@ Now we can complete the implementation of the `FooProject` class:
 // FooProject.java
 
     @Override
-    protected void hBuildStructure(Object body,
-        Map<IElement, Object> newElements, IProgressMonitor monitor)
-        throws CoreException
+    public void hBuildStructure(IContext context,
+        IProgressMonitor monitor) throws CoreException
     {
         IResource[] members = project.members();
         List<IFooFile> fooFiles = new ArrayList<>(members.length);
@@ -300,7 +299,7 @@ of the created body for the `FooProject` element.
 
 Again, there is no need to do anything else here, because each `FooFile` will,
 in turn, be an openable element and will build its own structure on demand
-in its `hBuildStructure` method.
+in its `hBuildSourceStructure` method.
 
 Now that we have a complete implementation for the class `FooProject`,
 we can test it. But let's first define some handy methods in `IFooProject`:
@@ -309,15 +308,15 @@ we can test it. But let's first define some handy methods in `IFooProject`:
 // IFooProject.java
 
     /**
-     * Returns the Foo file with the given name in this project, or 
-     * <code>null</code> if unable to associate the given name 
-     * with a Foo file. The name has to be a valid file name. 
+     * Returns the Foo file with the given name in this project, or
+     * <code>null</code> if unable to associate the given name
+     * with a Foo file. The name has to be a valid file name.
      * This is a handle-only method. The Foo file may or may not exist.
-     * 
+     *
      * @param name the name of the Foo file (not <code>null</code>)
-     * @return the Foo file with the given name in this project, 
-     *  or <code>null</code> if unable to associate the given name 
-     *  with a Foo file 
+     * @return the Foo file with the given name in this project,
+     *  or <code>null</code> if unable to associate the given name
+     *  with a Foo file
      */
     IFooFile getFooFile(String name);
 
@@ -366,13 +365,13 @@ For completeness, we will also add a method to `FooModelCore`:
 // FooModelCore.java
 
     /**
-     * Returns the Foo file corresponding to the given file, 
-     * or <code>null</code> if unable to associate the given file 
+     * Returns the Foo file corresponding to the given file,
+     * or <code>null</code> if unable to associate the given file
      * with a Foo file.
      *
      * @param file the given file (maybe <code>null</code>)
-     * @return the Foo file corresponding to the given file, 
-     *  or <code>null</code> if unable to associate the given file 
+     * @return the Foo file corresponding to the given file,
+     *  or <code>null</code> if unable to associate the given file
      *  with a Foo file
      */
     public static IFooFile create(IFile file)
@@ -550,17 +549,17 @@ The test case will now pass.
 
 ## Building Source File Structure
 
-Let's get back to the `FooFile` and its `hBuildStructure` method.
+Let's get back to the `FooFile` and its `hBuildSourceStructure` method.
 
 The `FooFile` is the innermost openable element in our model.
 Elements inside a source file are *never* openable because the
 source file always builds all of its inner structure in one go
 by parsing the text contents, as we'll soon see.
 
-The method `hBuildStructure` of a source file is supposed to create and
-initialize a `SourceElementBody` for the source file itself and also for
-each of its descendant elements, and place the initialized bodies into
-the `NEW_ELEMENTS` map in the given context.
+The method `hBuildSourceStructure` of a source file is supposed to create and
+initialize a body for the source file itself and also for each of its descendant
+elements, and place the initialized bodies into the `NEW_ELEMENTS` map in the
+given context.
 
 The class `SourceElementBody` extends the class `Body` and implements the
 interface `ISourceElementInfo`. It holds cached structure and properties for
@@ -578,16 +577,16 @@ The bodies need to be initialized based on the `SOURCE_AST` or the
 may be present (in the latter case the `SOURCE_AST` is guaranteed to be created
 from the `SOURCE_STRING`).
 
-The reason for such a contract is that the `hBuildStructure` method may be
-invoked from different framework layers and, depending on the framework
+The reason for such a contract is that the `hBuildSourceStructure` method may
+be invoked from different framework layers and, depending on the framework
 configuration, the AST may be already available and can be efficiently reused.
 However, Handly is flexible enough to allow for framework configurations where
 even something like SAX can be used, skipping the AST creation altogether.
 
-In the most general case, though, the method implementation should check for
-the `SOURCE_AST` first and, if it is not available, parse the `SOURCE_STRING`
-using whatever means it sees fit. Actually, it is not as complicated as it may
-sound.
+In general, thus, the `hBuildSourceStructure` method should check for the
+`SOURCE_AST` first and, if it is not available, parse the `SOURCE_STRING`
+using whatever means it sees fit. Actually, it is not as complicated as it
+may sound.
 
 The `SOURCE_AST` is typed as `Object`, since the core framework knows nothing
 about a specific representation of the AST; it can just propagate the AST
@@ -601,8 +600,8 @@ would be Xtext-specific. Here's the relevant code:
 // FooFile.java
 
     @Override
-    protected void hBuildStructure(IContext context, IProgressMonitor monitor)
-        throws CoreException
+    public void hBuildSourceStructure(IContext context,
+        IProgressMonitor monitor) throws CoreException
     {
         Map<IElement, Object> newElements = context.get(NEW_ELEMENTS);
         SourceElementBody body = new SourceElementBody();
@@ -649,7 +648,7 @@ would be Xtext-specific. Here's the relevant code:
      *  <code>XtextResource</code> (not <code>null</code>)
      * @return the new <code>XtextResource</code> loaded from
      *  the given contents (never <code>null</code>)
-     * @throws IOException if resource loading failed 
+     * @throws IOException if resource loading failed
      */
     protected XtextResource parse(String contents, String encoding)
         throws IOException
@@ -670,7 +669,7 @@ would be Xtext-specific. Here's the relevant code:
      * Returns the <code>IResourceSetProvider</code> corresponding to
      * this file. This is a handle-only method.
      *
-     * @return the <code>IResourceSetProvider</code> for this file 
+     * @return the <code>IResourceSetProvider</code> for this file
      *  (never <code>null</code>)
      */
     protected IResourceServiceProvider getResourceServiceProvider()
@@ -684,7 +683,7 @@ would be Xtext-specific. Here's the relevant code:
     }
 
     /**
-     * Returns the EMF resource URI for this file. 
+     * Returns the EMF resource URI for this file.
      * This is a handle-only method.
      *
      * @return the resource URI for this file (never <code>null</code>)
@@ -698,8 +697,8 @@ would be Xtext-specific. Here's the relevant code:
 
 If you don't happen to know Xtext, you can safely ignore most of the
 implementation details. The `XtextResource` contains an object graph
-representing the AST. The method `hBuildStructure` walks through this
-object graph and in the process creates handles for source elements,
+representing the AST. The method `hBuildSourceStructure` walks through
+this object graph and in the process creates handles for source elements,
 initializes the corresponding bodies, and places the handle/body pairs
 into the `NEW_ELEMENTS` map. It delegates all the hard work to the class
 `FooFileStructureBuilder`, which uses the Handly-provided `StructureHelper`
@@ -718,7 +717,7 @@ class FooFileStructureBuilder
 
     /**
      * Constructs a new Foo file structure builder.
-     * 
+     *
      * @param newElements the map to populate with structure elements
      *  (not <code>null</code>)
      * @param resourceServiceProvider Xtext's {@link IResourceServiceProvider}
@@ -735,7 +734,7 @@ class FooFileStructureBuilder
     }
 
     /**
-     * Builds the structure for the given {@link FooFile} based on 
+     * Builds the structure for the given {@link FooFile} based on
      * its {@link Module AST}.
      *
      * @param handle the handle to a Foo file (not <code>null</code>)
@@ -826,7 +825,7 @@ for obtaining its value:
      * Returns the names of parameters in this function.
      * Returns an empty array if this function has no parameters.
      *
-     * @return the names of parameters in this function; an empty array 
+     * @return the names of parameters in this function; an empty array
      *  if this function has no parameters (never <code>null</code>)
      * @throws CoreException if this element does not exist or if an
      *  exception occurs while accessing its corresponding resource
@@ -860,7 +859,7 @@ We're almost done, except for some additional getter methods in the `IFooFile`:
      *  (never <code>null</code>). The variable may or may not exist.
      */
     IFooVar getVar(String name);
-    
+
     /**
      * Returns the variables declared in this Foo file in the order in which
      * they appear in the source.
@@ -871,7 +870,7 @@ We're almost done, except for some additional getter methods in the `IFooFile`:
      *  an exception occurs while accessing its corresponding resource
      */
     IFooVar[] getVars() throws CoreException;
-    
+
     /**
      * Returns the function with the given name and the given arity defined
      * in this Foo file. This is a handle-only method. The function may or
@@ -883,7 +882,7 @@ We're almost done, except for some additional getter methods in the `IFooFile`:
      *  (never <code>null</code>). The function may or may not exist.
      */
     IFooDef getDef(String name, int arity);
-    
+
     /**
      * Returns the functions defined in this Foo file in the order in which
      * they appear in the source.
@@ -967,13 +966,13 @@ public class FooFileTest
         assertEquals(fooFile.getDef("f", 0), defs[0]);
         assertEquals(fooFile.getDef("f", 1), defs[1]);
         assertEquals(fooFile.getDef("f", 2), defs[2]);
-        
+
         assertEquals(0, defs[0].getParameterNames().length);
-        
+
         String[] parameterNames = defs[1].getParameterNames();
         assertEquals(1, parameterNames.length);
         assertEquals("x", parameterNames[0]);
-        
+
         parameterNames = defs[2].getParameterNames();
         assertEquals(2, parameterNames.length);
         assertEquals("x", parameterNames[0]);
@@ -982,7 +981,7 @@ public class FooFileTest
 }
 ```
 
-Run it as a JUnit Plug-in Test. You can use the launch configuration 
+Run it as a JUnit Plug-in Test. You can use the launch configuration
 predefined in the test fragment.
 
 Amazingly, it works! But how *fast*?
@@ -1004,7 +1003,7 @@ Let's run the body of the `testFooFile` method 100,000 times in a loop:
 It might seem it would never return! (Okay, it took about 5 minutes
 on our machine...) Couldn't it do better than this?
 
-If you set a breakpoint in the `FooFile.hBuildStructure` method and
+If you set a breakpoint in the `FooFile.hBuildSourceStructure` method and
 rerun the `FooFileTest` under debugger, you will see that every request
 for the Foo file's body leads to rebuilding of the whole structure
 of the source file and hence, to reparsing. It is done six (!) times

@@ -90,13 +90,13 @@ We will also define a new helper method in the `FooModelCore`:
 // FooModelCore.java
 
     /**
-     * Returns the Foo element corresponding to the given resource, or 
-     * <code>null</code> if unable to associate the given resource 
+     * Returns the Foo element corresponding to the given resource, or
+     * <code>null</code> if unable to associate the given resource
      * with an element of the Foo Model.
      *
      * @param resource the given resource (maybe <code>null</code>)
-     * @return the Foo element corresponding to the given resource, or 
-     *  <code>null</code> if unable to associate the given resource 
+     * @return the Foo element corresponding to the given resource, or
+     *  <code>null</code> if unable to associate the given resource
      *  with an element of the Foo Model
      */
     public static IFooElement create(IResource resource)
@@ -362,9 +362,9 @@ public class Activator
 
     public static final String T_OBJ16 = "/obj16/";
 
-    public static final String IMG_OBJ_DEF = 
+    public static final String IMG_OBJ_DEF =
         PLUGIN_ID + T_OBJ16 + "def.gif";
-    public static final String IMG_OBJ_VAR = 
+    public static final String IMG_OBJ_VAR =
         PLUGIN_ID + T_OBJ16 + "var.gif";
 
     // ...
@@ -440,8 +440,8 @@ Handly provides an infrastructure for dealing with *change notifications*
 in Handly-based models. It is largely similar in design to corresponding
 facilities of the Eclipse Java development tools' Java model and the Eclipse
 Platform resource model, so there is a good chance that you might be familiar
-with the core concepts. (If not, the eclipse.org article [How You've Changed!]
-(https://www.eclipse.org/articles/Article-Resource-deltas/resource-deltas.html)
+with the core concepts. (If not, the eclipse.org article
+[How You've Changed!](https://www.eclipse.org/articles/Article-Resource-deltas/resource-deltas.html)
 written by John Arthorne could be a great introduction to the problematics
 of efficiently notifying clients of changes in a handle-based model.)
 A detailed description of the infrastructure would take an article of its own,
@@ -460,7 +460,7 @@ subscription mechanism and are given after-the-fact notification of exactly
 what elements of the model changed and how they changed.
 
 The object passed to an element change listener is an instance of
-`IElementChangeEvent`. The most important bits of information in the event 
+`IElementChangeEvent`. The most important bits of information in the event
 are the event type, and the element delta. The event type is simply an integer
 that describes what kind of event occurred. We will focus on `POST_CHANGE`
 event type here, i.e. on those events that occur during corresponding
@@ -547,10 +547,10 @@ into Foo element deltas. Let the `FooDeltaProcessor` be responsible for that:
         new ElementDelta(FooModelCore.getFooModel()));
 
     /**
-     * Returns the Foo element delta built from the resource delta. 
-     * Returns an empty delta if no Foo elements were affected 
+     * Returns the Foo element delta built from the resource delta.
+     * Returns an empty delta if no Foo elements were affected
      * by the resource change.
-     * 
+     *
      * @return Foo element delta (never <code>null</code>)
      */
     public IElementDelta getDelta()
@@ -604,8 +604,8 @@ Let's expose the subscription facility in the API of our model:
 // IFooModel.java
 
     /**
-     * Adds the given listener for changes to elements in the Foo Model. 
-     * Has no effect if an identical listener is already registered. 
+     * Adds the given listener for changes to elements in the Foo Model.
+     * Has no effect if an identical listener is already registered.
      * <p>
      * Once registered, a listener starts receiving notification
      * of changes to elements in the Foo Model. The listener continues
@@ -954,7 +954,7 @@ public class FooNavigator
         // NOTE: don't hold on the event or its delta.
         // The delta is only valid during the dynamic scope
         // of the notification. In particular, don't pass it
-        // to another thread (e.g. via asyncExec). 
+        // to another thread (e.g. via asyncExec).
         final Control control = getCommonViewer().getControl();
         control.getDisplay().asyncExec(new Runnable()
         {
@@ -978,9 +978,9 @@ public class FooNavigator
         {
             public void run()
             {
-                TreePath[] treePaths = 
+                TreePath[] treePaths =
                     getCommonViewer().getExpandedTreePaths();
-                getCommonViewer().refresh(); 
+                getCommonViewer().refresh();
                 getCommonViewer().setExpandedTreePaths(treePaths);
             }
         });

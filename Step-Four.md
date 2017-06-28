@@ -4,8 +4,8 @@ In [[Step Three]] we have built a Navigator view for our Handly-based model.
 It works fine, except that it cannot display the outline of the editor's
 current contents for a Foo file -- it only "sees" the saved contents of the
 file. In this step we will employ the so-called working copy facility to make
-the view even more alive. We will also use the resulting infrastructure
-to build the Outline page for the Foo editor -- another view of our model.
+that view even more alive. We will also use the resulting infrastructure
+to build an Outline page for the Foo editor -- another view of our model.
 The complete source code for this step of the running example is available
 in the [Step Four repository](https://github.com/pisv/gethandly.4th).
 
@@ -111,7 +111,7 @@ the notification manager in the *model context*:
     {
         fooModel = new FooModel();
         elementManager = new ElementManager(new FooModelCache());
-         notificationManager = new NotificationManager();
+        notificationManager = new NotificationManager();
         // new code -->
         modelContext = new Context();
         modelContext.bind(INotificationManager.class).to(
@@ -154,7 +154,7 @@ and expose the model context in `FooModel`:
 
 That will make the notification manager accessible to the generic working copy
 change notification facility in the class `SourceFile` (for details, see the
-`hWorkingCopyModeChanged` method and the inner class `NotifyingReconcileOperation`).
+`hWorkingCopyModeChanged` method and the nested class `NotifyingReconcileOperation`).
 
 And while we are here, let's also handle the working copy as a special case
 in the `FooDeltaProcessor`:
@@ -365,25 +365,27 @@ resonates with our intent:
 We hope this tutorial will help you get started in a similar way.
 
 You should know enough now to explore Handly and venture out on your own.
-To dive deeper, let us point you to the project's [web site]
-(https://eclipse.org/handly/) and, of course, [source code]
-(https://projects.eclipse.org/projects/technology.handly/developer).
+To dive deeper, let us point you to the project's [web site](https://eclipse.org/handly/)
+and, of course, [source code](https://projects.eclipse.org/projects/technology.handly/developer).
 In particular, you might be interested in a more advanced exemplary
 implementation that Handly provides: example model for Java
 (`org.eclipse.handly.examples.javamodel`). There is also a concise
 [architectural overview](http://www.eclipse.org/downloads/download.php?file=/handly/docs/handly-overview.pdf&r=1)
 of the core framework that can be used as a quick refresher of the concepts
-learnt from this guide.
+learnt from this guide. Last but not least we have created an
+[experimental fork of Eclipse Java development tools](https://github.com/pisv/jdt.core-handly),
+which can serve as an example of Handly usage within the context of a
+non-trivial existing model implementation.
 
 If you have found an error in the text or in a code example,
-or would like to suggest an enhancement, please [raise an issue]
-(https://github.com/pisv/gethandly/issues) against the
+or would like to suggest an enhancement, please
+[raise an issue](https://github.com/pisv/gethandly/issues) against the
 [guide's repository](https://github.com/pisv/gethandly).
 We also accept pull requests. It is open source, after all! ;-)
 
 If you could not find an answer to your question or would like to provide
 feedback about this tutorial or about Handly in general, consider using the
-project's [forum](http://eclipse.org/forums/eclipse.handly) or [mailing list]
-(https://dev.eclipse.org/mailman/listinfo/handly-dev).
+project's [forum](http://eclipse.org/forums/eclipse.handly) or
+[mailing list](https://dev.eclipse.org/mailman/listinfo/handly-dev).
 
 *Put Handly to work for you!*

@@ -7,8 +7,8 @@ While simple, this is going to be a complete, fully functional implementation.
 It will demonstrate the basic structuring and behavior of a Handly-based model
 and give you a taste of what it is all about. It will also serve as a
 starting point for our next step. The complete source code for this step
-of the running example is available in the [Step One repository]
-(https://github.com/pisv/gethandly.1st).
+of the running example is available in the
+[Step One repository](https://github.com/pisv/gethandly.1st).
 
 We begin by defining the interfaces for Foo model elements
 in the package `org.eclipse.handly.examples.basic.ui.model`
@@ -61,7 +61,7 @@ and overriding the inherited abstract methods. Let's begin with the class
 
 ```java
 /**
- * Represents the root Foo element corresponding to the workspace. 
+ * Represents the root Foo element corresponding to the workspace.
  */
 public class FooModel
     extends Element
@@ -97,7 +97,7 @@ public class FooModel
     }
 
     @Override
-    protected void hValidateExistence(IContext context) throws CoreException
+    public void hValidateExistence(IContext context) throws CoreException
     {
         // always exists
     }
@@ -151,11 +151,11 @@ public class FooProject
     private final IProject project;
 
     /**
-     * Constructs a handle for a Foo project with the given parent element 
+     * Constructs a handle for a Foo project with the given parent element
      * and the given underlying workspace project.
-     * 
+     *
      * @param parent the parent of the element (not <code>null</code>)
-     * @param project the workspace project underlying the element 
+     * @param project the workspace project underlying the element
      *  (not <code>null</code>)
      */
     public FooProject(FooModel parent, IProject project)
@@ -173,14 +173,14 @@ public class FooProject
     }
 
     @Override
-    protected void hValidateExistence(IContext context) throws CoreException
+    public void hValidateExistence(IContext context) throws CoreException
     {
         if (!project.hasNature(NATURE_ID))
             throw hDoesNotExistException();
     }
 }
 ```
- 
+
 For the Foo project, `hValidateExistence` throws a `CoreException` when the
 underlying project resource is not accessible or doesn't have the Foo nature.
 
@@ -269,7 +269,7 @@ we set the currently open Foo projects as the children of the created body:
 // FooModel.java
 
     @Override
-    protected void hBuildStructure(IContext context, IProgressMonitor monitor)
+    public void hBuildStructure(IContext context, IProgressMonitor monitor)
         throws CoreException
     {
         IProject[] projects = workspace.getRoot().getProjects();
@@ -321,7 +321,7 @@ the single instance of the `IFooModel` and the single instance of the
 // package org.eclipse.handly.internal.examples.basic.ui.model
 
 /**
- * The manager for the Foo Model. 
+ * The manager for the Foo Model.
  *
  * @threadsafe This class is intended to be thread-safe
  */
@@ -329,7 +329,7 @@ public class FooModelManager
     implements IModelManager
 {
     /**
-     * The sole instance of the manager. 
+     * The sole instance of the manager.
      */
     public static final FooModelManager INSTANCE = new FooModelManager();
 
@@ -478,7 +478,7 @@ public class FooProject
     // ...
 
     @Override
-    protected void hBuildStructure(IContext context, IProgressMonitor monitor)
+    public void hBuildStructure(IContext context, IProgressMonitor monitor)
         throws CoreException
     {
         // no children for now
@@ -493,15 +493,15 @@ Next, to make writing tests for the model a bit more straightforward,
 we need to define some handy methods in the interfaces for our model elements.
 Note that our interfaces extend the interface `IElementExtension`, which
 introduces a number of generally useful default methods for model elements,
-effectively acting like mix-in. We could just as well define our model API
+effectively acting like a trait. We could just as well define our model API
 entirely from scratch -- the model interfaces are not required to extend
 any Handly interfaces -- but have chosen to extend `IElementExtension`
 for convenience.
 
 ```java
 /**
- * Represents the root Foo element corresponding to the workspace. 
- * Since there is only one such root element, it is commonly referred to 
+ * Represents the root Foo element corresponding to the workspace.
+ * Since there is only one such root element, it is commonly referred to
  * as <em>the</em> Foo Model element.
  */
 public interface IFooModel
@@ -529,7 +529,7 @@ public interface IFooModel
      * Returns the workspace associated with this Foo Model.
      * This is a handle-only method.
      *
-     * @return the workspace associated with this Foo Model 
+     * @return the workspace associated with this Foo Model
      *  (never <code>null</code>)
      */
     IWorkspace getWorkspace();
@@ -585,7 +585,7 @@ The newly defined methods are implemented as follows:
         System.arraycopy(children, 0, result, 0, length);
         return result;
     }
-    
+
     @Override
     public IWorkspace getWorkspace()
     {
@@ -623,16 +623,16 @@ public class FooModelCore
     {
         return FooModelManager.INSTANCE.getModel();
     }
-    
+
     /**
      * Returns the Foo project corresponding to the given project.
      * <p>
-     * Note that no check is done at this time on the existence 
+     * Note that no check is done at this time on the existence
      * or the nature of this project.
      * </p>
      *
      * @param project the given project (maybe <code>null</code>)
-     * @return the Foo project corresponding to the given project, 
+     * @return the Foo project corresponding to the given project,
      *  or <code>null</code> if the given project is <code>null</code>
      */
     public static IFooProject create(IProject project)
@@ -641,7 +641,7 @@ public class FooModelCore
             return null;
         return getFooModel().getFooProject(project.getName());
     }
-    
+
     private FooModelCore()
     {
     }
@@ -686,11 +686,11 @@ The inherited `setUpProject` method creates a new project in the runtime
 workspace by copying the project's contents from the `workspace` folder of
 the test fragment. It returns the created and opened `IProject`.
 
-Let's write a simplest test:
+Let's write a simple test:
 
 ```java
 // FooModelTest.java
-    
+
     public void testFooModel() throws Exception
     {
         IFooModel fooModel = FooModelCore.getFooModel();
@@ -875,7 +875,7 @@ that implements `IResourceDeltaVisitor`:
 // package org.eclipse.handly.internal.examples.basic.ui.model
 
 /**
- * This class is used by the <code>FooModelManager</code> to process 
+ * This class is used by the <code>FooModelManager</code> to process
  * resource deltas and update the Foo Model accordingly.
  */
 class FooDeltaProcessor

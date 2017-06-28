@@ -1,42 +1,14 @@
 # Get a Handle on Handly!
 **A step-by-step guide to getting started with Eclipse Handly
-http://eclipse.org/handly/**
-
-The Eclipse Handly project provides basic building blocks for handle-based
-models, with an emphasis on language-specific source code models of the
-underlying workspace. It allows creating highly scalable, robust,
-and thoroughly optimized models similar in design principles to the
-tried-and-tested Java model of Eclipse Java developement tools (JDT) while
-reducing programming effort, fostering software reuse, and enabling
-interoperability.
-
-Handly is designed for flexibility and can be used to create source code models
-for practically any language, whether general-purpose or domain-specific;
-it is compatible with any parsing technology. Since version 0.5, the model
-implementor has complete control over the model's base-level API, including
-the ability to implement a preexisting handle-based model API. At the same
-time, the provided uniform meta-level API establishes a common language and
-makes it possible for IDE components to work in a generic way with any
-Handly-based model.
+https://eclipse.org/handly/**
 
 Probably the best way to tell you about Handly is to walk you through the
 development of an example. We'll use a simple Xtext-based language as the
-basis for the running example. While nothing in the Handly core depends
+basis for the running example. While nothing in the Handly Core depends
 on Xtext, going this way will be a bit easier for you to get started.
 The complete example is available as part of the Examples feature of Handly;
 see the plug-ins `org.eclipse.handly.examples.basic` and
 `org.eclipse.handly.examples.basic.ui`.
-
-This article is intended for implementors of Eclipse-based development tools
-for a programming language. We assume a familiarity with plug-in development
-and the Eclipse Platform resource model, and also expect an architectural
-understanding of the core infrastructure of Eclipse JDT or of other similarly
-structured Eclipse-based tools such as Eclipse C/C++ Development Tooling (CDT).
-That is, the text is not specifically about why you would need a handle-based
-model defining, from your language's angle, a code-centric view on the
-underlying workspace, or what the heck it is (although we hope to shed some
-light on those questions too). Rather, it is about how to implement such a
-model with Handly.
 
 Let's start with a description of our language called Foo.
 Here's its Xtext grammar:
@@ -48,11 +20,11 @@ Module:
   vars += Var*
   defs += Def*
 ;
-	
+
 Var:
   'var' name=ID ';'
 ;
-	
+
 Def:
   'def' name=ID '(' (params+=ID)? (',' params+=ID)* ')' '{' '}'
 ;
@@ -97,9 +69,9 @@ content type), **Foo variable** and **Foo function** (structural elements
 inside a Foo file). These elements constitute a *code model* for the
 Foo language, from the workspace root level down to structural elements
 inside source files. In this article we'll walk you through the process
-of implementing this model.
+of implementing this model with Handly.
 
-The article is organized as a step-by-step guide, each step taking you 
+The article is organized as a step-by-step guide, each step taking you
 around Handly in increasing detail.
 
 1. [[Step Zero]] gets you set up for further development of the running example.
