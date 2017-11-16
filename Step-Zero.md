@@ -10,9 +10,9 @@ In our case, **Eclipse IDE for Java and DSL Developers** would be the best choic
 This tutorial assumes Eclipse Oxygen (4.7.x) release. You can find a build for
 your platform by visiting https://www.eclipse.org/downloads/eclipse-packages/.
 
-You also need to add **Eclipse Handly 0.7.x** into the installation. Please
+You also need to add **Eclipse Handly 0.8.x** into the installation. Please
 visit the project's [Downloads page](https://projects.eclipse.org/projects/technology.handly/downloads)
-to find the URL of the update site for the latest 0.7.x release. Be sure
+to find the URL of the update site for the latest 0.8.x release. Be sure
 to install all features, including examples and tests.
 
 ## Setting Up a Workspace

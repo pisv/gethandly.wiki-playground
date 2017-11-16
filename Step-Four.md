@@ -146,7 +146,7 @@ and expose the model context in `FooModel`:
 // FooModel.java
 
     @Override
-    public IContext getModelContext()
+    public IContext getModelContext_()
     {
         return FooModelManager.INSTANCE.getModelContext();
     }
@@ -154,7 +154,7 @@ and expose the model context in `FooModel`:
 
 That will make the notification manager accessible to the generic working copy
 change notification facility in the class `SourceFile` (for details, see the
-`hWorkingCopyModeChanged` method and the nested class `NotifyingReconcileOperation`).
+`workingCopyModeChanged_` method and the nested class `NotifyingReconcileOperation`).
 
 And while we are here, let's also handle the working copy as a special case
 in the `FooDeltaProcessor`:
@@ -369,12 +369,12 @@ To dive deeper, let us point you to the project's [web site](https://eclipse.org
 and, of course, [source code](https://projects.eclipse.org/projects/technology.handly/developer).
 In particular, you might be interested in a more advanced exemplary
 implementation that Handly provides: example model for Java
-(`org.eclipse.handly.examples.javamodel`). There is also a concise
+(`org.eclipse.handly.examples.jmodel`). There is also a concise
 [architectural overview](http://www.eclipse.org/downloads/download.php?file=/handly/docs/handly-overview.pdf&r=1)
-of the core framework that can be used as a quick refresher of the concepts
+of the Handly core framework that can be used as a quick refresher of the concepts
 learnt from this guide. Last but not least we have created an
 [experimental fork of Eclipse Java development tools](https://github.com/pisv/jdt.core-handly),
-which can serve as an example of Handly usage within the context of a
+which demonstrates how Handly can be used within the context of a
 non-trivial existing model implementation.
 
 If you have found an error in the text or in a code example,

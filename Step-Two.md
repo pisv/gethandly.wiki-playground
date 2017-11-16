@@ -252,7 +252,7 @@ public class FooFile
     }
 
     @Override
-    public void hBuildSourceStructure(IContext context,
+    public void buildSourceStructure_(IContext context,
         IProgressMonitor monitor)
     {
         // empty for now
@@ -260,7 +260,7 @@ public class FooFile
 }
 ```
 
-We will get back to the `hBuildSourceStructure` method in a moment.
+We will get back to the `buildSourceStructure_` method in a moment.
 
 Now we can complete the implementation of the `FooProject` class:
 
@@ -268,7 +268,7 @@ Now we can complete the implementation of the `FooProject` class:
 // FooProject.java
 
     @Override
-    public void hBuildStructure(IContext context,
+    public void buildStructure_(IContext context,
         IProgressMonitor monitor) throws CoreException
     {
         IResource[] members = project.members();
@@ -287,7 +287,7 @@ Now we can complete the implementation of the `FooProject` class:
             }
         }
         Body body = new Body();
-        body.setChildren(fooFiles.toArray(Body.NO_CHILDREN));
+        body.setChildren(fooFiles.toArray(Elements.EMPTY_ARRAY));
         context.get(NEW_ELEMENTS).put(this, body);
     }
 ```
@@ -299,7 +299,7 @@ of the created body for the `FooProject` element.
 
 Again, there is no need to do anything else here, because each `FooFile` will,
 in turn, be an openable element and will build its own structure on demand
-in its `hBuildSourceStructure` method.
+in its `buildSourceStructure_` method.
 
 Now that we have a complete implementation for the class `FooProject`,
 we can test it. But let's first define some handy methods in `IFooProject`:
@@ -549,14 +549,14 @@ The test case will now pass.
 
 ## Building Source File Structure
 
-Let's get back to the `FooFile` and its `hBuildSourceStructure` method.
+Let's get back to the `FooFile` and its `buildSourceStructure_` method.
 
 The `FooFile` is the innermost openable element in our model.
 Elements inside a source file are *never* openable because the
 source file always builds all of its inner structure in one go
 by parsing the text contents, as we'll soon see.
 
-The method `hBuildSourceStructure` of a source file is supposed to create and
+The method `buildSourceStructure_` of a source file is supposed to create and
 initialize a body for the source file itself and also for each of its descendant
 elements, and place the initialized bodies into the `NEW_ELEMENTS` map in the
 given context.
@@ -577,13 +577,13 @@ The bodies need to be initialized based on the `SOURCE_AST` or the
 may be present (in the latter case the `SOURCE_AST` is guaranteed to be created
 from the `SOURCE_STRING`).
 
-The reason for such a contract is that the `hBuildSourceStructure` method may
+The reason for such a contract is that the `buildSourceStructure_` method may
 be invoked from different framework layers and, depending on the framework
 configuration, the AST may be already available and can be efficiently reused.
 However, Handly is flexible enough to allow for framework configurations where
 even something like SAX can be used, skipping the AST creation altogether.
 
-In general, thus, the `hBuildSourceStructure` method should check for the
+In general, thus, the `buildSourceStructure_` method should check for the
 `SOURCE_AST` first and, if it is not available, parse the `SOURCE_STRING`
 using whatever means it sees fit. Actually, it is not as complicated as it
 may sound.
@@ -600,7 +600,7 @@ would be Xtext-specific. Here's the relevant code:
 // FooFile.java
 
     @Override
-    public void hBuildSourceStructure(IContext context,
+    public void buildSourceStructure_(IContext context,
         IProgressMonitor monitor) throws CoreException
     {
         Map<IElement, Object> newElements = context.get(NEW_ELEMENTS);
@@ -690,14 +690,14 @@ would be Xtext-specific. Here's the relevant code:
      */
     protected URI getResourceUri()
     {
-        return URI.createPlatformResourceURI(hFile().getFullPath().toString(),
+        return URI.createPlatformResourceURI(getFile_().getFullPath().toString(),
             true);
     }
 ```
 
 If you don't happen to know Xtext, you can safely ignore most of the
 implementation details. The `XtextResource` contains an object graph
-representing the AST. The method `hBuildSourceStructure` walks through
+representing the AST. The method `buildSourceStructure_` walks through
 this object graph and in the process creates handles for source elements,
 initializes the corresponding bodies, and places the handle/body pairs
 into the `NEW_ELEMENTS` map. It delegates all the hard work to the class
@@ -712,8 +712,9 @@ internally:
  */
 class FooFileStructureBuilder
 {
-    private final StructureHelper helper;
+    private final Map<IElement, Object> newElements;
     private final ILocationInFileProvider locationProvider;
+    private final StructureHelper helper = new StructureHelper();
 
     /**
      * Constructs a new Foo file structure builder.
@@ -726,7 +727,9 @@ class FooFileStructureBuilder
     FooFileStructureBuilder(Map<IElement, Object> newElements,
         IResourceServiceProvider resourceServiceProvider)
     {
-        helper = new StructureHelper(newElements);
+        if (newElements == null)
+            throw new IllegalArgumentException();
+        this.newElements = newElements;
         if (resourceServiceProvider == null)
             throw new IllegalArgumentException();
         locationProvider = resourceServiceProvider.get(
@@ -747,7 +750,8 @@ class FooFileStructureBuilder
             buildStructure(handle, body, var);
         for (Def def : module.getDefs())
             buildStructure(handle, body, def);
-        helper.complete(body);
+        body.setChildren(helper.popChildren(body).toArray(
+            Elements.EMPTY_ARRAY));
     }
 
     private void buildStructure(FooFile parent, Body parentBody, Var var)
@@ -756,11 +760,12 @@ class FooFileStructureBuilder
             return;
 
         FooVar handle = new FooVar(parent, var.getName());
+        helper.resolveDuplicates(handle);
         SourceElementBody body = new SourceElementBody();
         body.setFullRange(getFullRange(var));
         body.setIdentifyingRange(getIdentifyingRange(var));
-        helper.addChild(parentBody, handle, body);
-        helper.complete(body);
+        newElements.put(handle, body);
+        helper.pushChild(parentBody, handle);
     }
 
     private void buildStructure(FooFile parent, Body parentBody, Def def)
@@ -770,13 +775,14 @@ class FooFileStructureBuilder
 
         int arity = def.getParams().size();
         FooDef handle = new FooDef(parent, def.getName(), arity);
+        helper.resolveDuplicates(handle);
         SourceElementBody body = new SourceElementBody();
         body.setFullRange(getFullRange(def));
         body.setIdentifyingRange(getIdentifyingRange(def));
         body.set(FooDef.PARAMETER_NAMES, def.getParams().toArray(
             new String[arity]));
-        helper.addChild(parentBody, handle, body);
-        helper.complete(body);
+        newElements.put(handle, body);
+        helper.pushChild(parentBody, handle);
     }
 
     private TextRange getFullRange(EObject eObject)
@@ -799,12 +805,11 @@ class FooFileStructureBuilder
 }
 ```
 
-The class `StructureHelper` provides a couple of handy methods for
-building the structure of a model element: `addChild` remembers the given
-element as a child of the yet-to-be-completed parent body and establishes
-an association between the child handle and the child body, while `complete`
-completes the given body by initializing it with a list of elements previously
-remembered as children of the body.
+The class `StructureHelper` provides helper methods for building the structure
+of a model element: `pushChild` remembers the given element as a child of the
+given parent body, `popChildren` retrieves and forgets the child elements
+previously remembered for the given body, and `resolveDuplicates` resolves
+duplicate source constructs by incrementing their occurrence count.
 
 Note how the `FooFileStructureBuilder` uses a custom property for storing
 the parameter names of a Foo function in the element's `SourceElementBody`.
@@ -1003,7 +1008,7 @@ Let's run the body of the `testFooFile` method 100,000 times in a loop:
 It might seem it would never return! (Okay, it took about 5 minutes
 on our machine...) Couldn't it do better than this?
 
-If you set a breakpoint in the `FooFile.hBuildSourceStructure` method and
+If you set a breakpoint in the `FooFile.buildSourceStructure_` method and
 rerun the `FooFileTest` under debugger, you will see that every request
 for the Foo file's body leads to rebuilding of the whole structure
 of the source file and hence, to reparsing. It is done six (!) times
@@ -1082,7 +1087,7 @@ class FooModelCache
         {
             projectCache.put(element, body);
             // new code -->
-            fileCache.ensureSpaceLimit(body, element);
+            fileCache.ensureSpaceLimit(((Body)body).getChildren().length, element);
             // <-- new code
         }
         // new code -->

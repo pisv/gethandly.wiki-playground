@@ -557,17 +557,6 @@ into Foo element deltas. Let the `FooDeltaProcessor` be responsible for that:
     {
         return builder.getDelta();
     }
-
-    /**
-     * Returns whether Foo elements were affected by the resource change.
-     *
-     * @return <code>true</code> if no Foo elements were affected,
-     *  and <code>false</code> otherwise
-     */
-    public boolean isEmptyDelta()
-    {
-        return builder.isEmptyDelta();
-    }
 ```
 
 Now we can complete the implementation of the `FooModelManager`:
@@ -588,11 +577,12 @@ Now we can complete the implementation of the `FooModelManager`:
             Activator.log(e.getStatus());
         }
         // new code -->
-        if (!deltaProcessor.isEmptyDelta())
+        IElementDelta delta = deltaProcessor.getDelta();
+        if (!ElementDeltas.isEmpty(delta))
         {
             getNotificationManager().fireElementChangeEvent(
                 new ElementChangeEvent(ElementChangeEvent.POST_CHANGE,
-                    deltaProcessor.getDelta()));
+                    delta));
         }
         // <-- new code
     }
@@ -708,13 +698,15 @@ public class FooModelNotificationTest
             return;
         }
         assertNotNull(actual);
-        assertEquals(expected.hElement(), actual.hElement());
-        assertEquals(expected.hKind(), actual.hKind());
-        assertEquals(expected.hFlags(), actual.hFlags());
-        assertEquals(expected.hMovedToElement(), actual.hMovedToElement());
-        assertEquals(expected.hMovedFromElement(), actual.hMovedFromElement());
-        ElementDelta[] expectedChildren = expected.hAffectedChildren();
-        ElementDelta[] actualChildren = actual.hAffectedChildren();
+        assertEquals(expected.getElement_(), actual.getElement_());
+        assertEquals(expected.getKind_(), actual.getKind_());
+        assertEquals(expected.getFlags_(), actual.getFlags_());
+        assertEquals(expected.getMovedToElement_(),
+            actual.getMovedToElement_());
+        assertEquals(expected.getMovedFromElement_(),
+            actual.getMovedFromElement_());
+        ElementDelta[] expectedChildren = expected.getAffectedChildren_();
+        ElementDelta[] actualChildren = actual.getAffectedChildren_();
         assertEquals(expectedChildren.length, actualChildren.length);
         for (int i = 0; i < expectedChildren.length; i++)
             assertDelta(expectedChildren[i], actualChildren[i]);

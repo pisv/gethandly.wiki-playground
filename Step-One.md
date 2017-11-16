@@ -32,7 +32,7 @@ Let's define the corresponding implementation classes in the package
 ```java
 public class FooModel
     extends Element
-    implements IFooModel, IModel
+    implements IFooModel, IModelImpl
 {
 }
 
@@ -47,12 +47,11 @@ As you can see, we extend the class `Element`, a useful base implementation
 provided by Handly for handle-based model elements.
 
 Also, we make our root element, represented by the class `FooModel`,
-implement `IModel`, indicating that the root element will also serve
+implement `IModelImpl`, indicating that the root element will also serve
 as the *model object* in our model. The model object is the common owner
 of all elements of a model. In general, there is no requirement for the
 model object itself to be an element, but in this case we merge it with
-the root element for convenience. Note that we are careful to not expose
-this implementation detail in the API, so `IFooModel` does not extend `IModel`.
+the root element for convenience.
 
 At the moment, the code doesn't yet compile. We need to fill in the blanks
 and complete the implementation by providing the appropriate constructors
@@ -65,7 +64,7 @@ and overriding the inherited abstract methods. Let's begin with the class
  */
 public class FooModel
     extends Element
-    implements IFooModel, IModel
+    implements IFooModel, IModelImpl
 {
     private final IWorkspace workspace;
 
@@ -79,25 +78,25 @@ public class FooModel
     }
 
     @Override
-    public int getApiLevel()
+    public int getModelApiLevel_()
     {
         return ApiLevel.CURRENT;
     }
 
     @Override
-    public IContext getModelContext()
+    public IContext getModelContext_()
     {
         return Contexts.EMPTY_CONTEXT;
     }
 
     @Override
-    public IResource hResource()
+    public IResource getResource_()
     {
         return workspace.getRoot();
     }
 
     @Override
-    public void hValidateExistence(IContext context) throws CoreException
+    public void validateExistence_(IContext context) throws CoreException
     {
         // always exists
     }
@@ -107,17 +106,16 @@ public class FooModel
 Every model element (a handle) is a value object, so it must be immutable and
 must override equals() and hashCode() appropriately. The basic implementation
 of `equals()` and `hashCode()` provided in the class `Element` is sufficient in
-many cases -- it uses the parent and name of the element as a basis for
-computation.
+many cases -- it uses the element's name and parent as the basis for computation.
 
-The model object is a bit specific in that it must implement the `getApiLevel`
+The model object is a bit specific in that it must implement the `getModelApiLevel_`
 method, which returns the Handly *API level* supported by the model. By checking
 the API level, generic code can dynamically discover which API methods are
 supported by the model it is dealing with. It is recommended to always return
 `ApiLevel.CURRENT`, which corresponds to the version of Handly the model was
 built against.
 
-The model object must also implement the `getModelContext` method.
+The model object must also implement the `getModelContext_` method.
 A context, represented in Handly by the `IContext` interface, supplies
 values (data objects or services) associated with keys. Two kinds of keys
 are supported: `org.eclipse.handly.util.Property` and `java.lang.Class`,
@@ -127,15 +125,15 @@ information and services pertaining to the model. We currently have none,
 so we just return `EMPTY_CONTEXT`.
 
 Elements that have an underlying resource should return it from the
-`hResource()` method. In this case, the workspace root is returned.
+`getResource_()` method. In this case, the workspace root is returned.
 
-Handles can refer to non-existing elements. The `hValidateExistence` method
+Handles can refer to non-existing elements. The `validateExistence_` method
 should throw a `CoreException` if the element may not begin existence in the
 model (for example, if its underlying resource does not exist). In this case,
 this method does nothing as the root element always exists.
 
 As you can see, the methods inherited from the class `Element` use a naming
-convention based on the `h` prefix. This effectively separates methods
+convention based on the `_` suffix. This effectively separates methods
 defined by the framework from model-specific methods defined by the model
 implementor and significantly reduces the possibility of a method conflict
 in the inheritance hierarchy.
@@ -167,21 +165,21 @@ public class FooProject
     }
 
     @Override
-    public IResource hResource()
+    public IResource getResource_()
     {
         return project;
     }
 
     @Override
-    public void hValidateExistence(IContext context) throws CoreException
+    public void validateExistence_(IContext context) throws CoreException
     {
         if (!project.hasNature(NATURE_ID))
-            throw hDoesNotExistException();
+            throw newDoesNotExistException_();
     }
 }
 ```
 
-For the Foo project, `hValidateExistence` throws a `CoreException` when the
+For the Foo project, `validateExistence_` throws a `CoreException` when the
 underlying project resource is not accessible or doesn't have the Foo nature.
 
 If you need a reference on what exactly a project nature is, the Eclipse Corner
@@ -254,14 +252,14 @@ The Foo nature doesn't configure any specific builders; the Xtext builder
 will be installed by the required Xtext nature.
 
 We still need to implement a couple of remaining abstract methods for our
-model elements: `hBuildStructure` and `hModelManager`. Those methods are
+model elements: `buildStructure_` and `getModelManager_`. Those methods are
 central to implementation of the *handle/body idiom* in Handly.
 
 The basic idea is that mutable structure and properties of a model element
 are stored separately in an internal 'body', while the handle holds immutable,
 'key' information about the element (recall that handles are value objects).
 
-The method `hBuildStructure` is responsible for creating a body for the element
+The method `buildStructure_` is responsible for creating a body for the element
 and initializing it based on the element's current contents. For the `FooModel`,
 we set the currently open Foo projects as the children of the created body:
 
@@ -269,7 +267,7 @@ we set the currently open Foo projects as the children of the created body:
 // FooModel.java
 
     @Override
-    public void hBuildStructure(IContext context, IProgressMonitor monitor)
+    public void buildStructure_(IContext context, IProgressMonitor monitor)
         throws CoreException
     {
         IProject[] projects = workspace.getRoot().getProjects();
@@ -282,20 +280,20 @@ we set the currently open Foo projects as the children of the created body:
             }
         }
         Body body = new Body();
-        body.setChildren(fooProjects.toArray(Body.NO_CHILDREN));
+        body.setChildren(fooProjects.toArray(Elements.EMPTY_ARRAY));
         context.get(NEW_ELEMENTS).put(this, body);
     }
 ```
 
-As you can see, the `hBuildStructure` method has an *operation context*
+As you can see, the `buildStructure_` method has an *operation context*
 as one its parameters. We are using the context-provided `NEW_ELEMENTS` map
 to associate the created body with the element, as required by the method's
 contract.
 
 In general, any `Object` can be used as the body of an `Element`. Usually,
 an instance of the class `Body` or its subclass is used. Otherwise, we would
-also need to override the `hChildren(Object)` method, which returns the
-element's children stored in the given body.
+also need to override the `getChildrenFromBody_(Object)` method, which returns
+the element's children stored in the given body.
 
 Note that we only create and intitialize a body for the `FooModel` itself
 rather than let the `FooModel` to also build the structure for its child
@@ -436,7 +434,7 @@ class FooModelCache
 }
 ```
 
-Now we can implement the remaining abstract method `hModelManager`
+Now we can implement the remaining abstract method `getModelManager_`
 of the `FooModel` class. However, since every element of our model would
 implement that method in exactly the same way, it might be useful to extract
 the implementation to an internal 'mix-in' interface:
@@ -446,7 +444,7 @@ interface IFooElementInternal
     extends IModelManager.Provider
 {
     @Override
-    default IModelManager hModelManager()
+    default IModelManager getModelManager_()
     {
         return FooModelManager.INSTANCE;
     }
@@ -457,7 +455,7 @@ and have the `FooModel` implement it:
 ```java
 public class FooModel
     extends Element
-    implements IFooModel, IFooElementInternal, IModel
+    implements IFooModel, IFooElementInternal, IModelImpl
 {
     // ...
 }
@@ -468,7 +466,7 @@ test it. But before we can do it, two more items require our attention.
 
 First, to have the class `FooProject` compile without errors, we need to
 make it implement `IFooElementInternal` and provide an implementation for
-the `hBuildStructure` method:
+the `buildStructure_` method:
 
 ```java
 public class FooProject
@@ -478,7 +476,7 @@ public class FooProject
     // ...
 
     @Override
-    public void hBuildStructure(IContext context, IProgressMonitor monitor)
+    public void buildStructure_(IContext context, IProgressMonitor monitor)
         throws CoreException
     {
         // no children for now
@@ -487,7 +485,7 @@ public class FooProject
 ```
 
 For the moment, a `FooProject` won't have any child elements, so its
-`hBuildStructure` method is left empty.
+`buildStructure_` method is left empty.
 
 Next, to make writing tests for the model a bit more straightforward,
 we need to define some handy methods in the interfaces for our model elements.
@@ -957,12 +955,12 @@ class FooDeltaProcessor
 
     private static Body findBody(IElement element)
     {
-        return (Body)((Element)element).hFindBody();
+        return (Body)((Element)element).findBody_();
     }
 
     private static void close(IElement element)
     {
-        ((Element)element).hClose();
+        ((Element)element).close_();
     }
 }
 ```
