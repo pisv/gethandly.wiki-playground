@@ -1,6 +1,6 @@
 # Step Two: The Rest of the Model
 
-[[Step One]] has left us with the basics of a model. We have
+[[Step One]] has left us with the basics of a model. We have got
 a two-level hierarchy of `FooModel` containing `FooProject`s
 and some resource delta processing for keeping the model up-to-date.
 We will use it as a starting point for this step, where we will build
@@ -24,9 +24,9 @@ interfaces' we are extending already extend the corresponding common
 interfaces). This will make the model easier to use with APIs expressed
 in terms of the common element interfaces. (An important API expressed
 in terms of the common interfaces is the class `Elements` that provides
-methods for generic access to elements of any Handly-based model). Otherwise,
-explicit casts might be necessary when interacting with such APIs. Since
-each of the common interfaces for model elements is just a marker interface
+static methods for generic access to elements of any Handly-based model).
+Otherwise, explicit casts might be necessary when interacting with such APIs.
+Since each of the common interfaces for model elements is just a marker interface
 and contains no members, there is generally no drawback in extending them.
 
 ```java
@@ -578,8 +578,8 @@ may be present (in the latter case the `SOURCE_AST` is guaranteed to be created
 from the `SOURCE_STRING`).
 
 The reason for such a contract is that the `buildSourceStructure_` method may
-be invoked from different framework layers and, depending on the framework
-configuration, the AST may be already available and can be efficiently reused.
+be invoked from different framework layers and, depending on a framework
+configuration, the AST may be already available and can efficiently be reused.
 However, Handly is flexible enough to allow for framework configurations where
 even something like SAX can be used, skipping the AST creation altogether.
 
@@ -1087,7 +1087,7 @@ class FooModelCache
         {
             projectCache.put(element, body);
             // new code -->
-            fileCache.ensureSpaceLimit(((Body)body).getChildren().length, element);
+            fileCache.ensureMaxSize(((Body)body).getChildren().length, element);
             // <-- new code
         }
         // new code -->
@@ -1107,7 +1107,7 @@ class FooModelCache
         {
             projectCache.remove(element);
             // new code -->
-            fileCache.resetSpaceLimit(DEFAULT_FILE_SIZE, element);
+            fileCache.resetMaxSize(DEFAULT_FILE_SIZE, element);
             // <-- new code
         }
         // new code -->
@@ -1124,12 +1124,11 @@ Note that an `ElementCache` is used for `FooFile`s themselves, whereas
 their child elements are stored in a simple `HashMap`.
 
 The `ElementCache` is quite interesting in that it is an *overflowing
-LRU cache*. It attempts to maintain a size equal or less than its space limit
+LRU cache*. It attempts to maintain a size equal or less than its max size
 by removing the least recently used elements. The cache will remove elements
-which successfully close and all elements which are explicitly removed.
-If the cache cannot remove enough old elements to add new elements, it will
-grow beyond its space limit. Later, it will attempt to shrink back to the
-space limit. Such a cache allows you to put a constraint on the amount
+that successfully close. If the cache cannot remove enough old elements to add
+new elements, it will grow beyond its max size. Later, it will attempt to shrink
+back to the max size. Such a cache allows you to put a constraint on the amount
 of memory consumed by the model.
 
 We don't need to use an LRU cache for child elements of Foo files (a `HashMap`

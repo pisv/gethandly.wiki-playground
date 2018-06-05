@@ -7,20 +7,17 @@ environment for our running example.
 ## Setting Up Eclipse
 
 In our case, **Eclipse IDE for Java and DSL Developers** would be the best choice.
-This tutorial assumes Eclipse Oxygen (4.7.x) release. You can find a build for
-your platform by visiting https://www.eclipse.org/downloads/eclipse-packages/.
-
-You also need to add **Eclipse Handly 0.8.x** into the installation. Please
-visit the project's [Downloads page](https://projects.eclipse.org/projects/technology.handly/downloads)
-to find the URL of the update site for the latest 0.8.x release. Be sure
-to install all features, including examples and tests.
+This tutorial assumes Eclipse Photon (4.8.x) release. You can find a build for
+your platform by visiting <https://www.eclipse.org/downloads/eclipse-packages/>.
 
 ## Setting Up a Workspace
 
 You may want to checkout example plug-in projects [*] from the
 [Step Zero repository](https://github.com/pisv/gethandly.0) into your workspace
 to use them as a basis for further development while following along
-with instructions of the next step: [[Basic Model|Step One]].
+with instructions of the next step: [[Basic Model|Step One]]. Use the provided
+`example.target` file in the `org.eclipse.handly.examples.basic` project
+to set a target platform for the example.
 
 **Note:** In general, there is a separate sub-module repository hosting
 source code for a particular step of our running example. Each subsequent step

@@ -296,7 +296,7 @@ also need to override the `getChildrenFromBody_(Object)` method, which returns
 the element's children stored in the given body.
 
 Note that we only create and intitialize a body for the `FooModel` itself
-rather than let the `FooModel` to also build the structure for its child
+rather than let the `FooModel` build the whole structure for its child
 projects and put it (as handle/body pairs) into the `NEW_ELEMENTS` map.
 Each `FooProject` will be responsible for building its own structure.
 
@@ -368,7 +368,7 @@ public class FooModelManager
 }
 ```
 
-An instance of the `ElementManager` must be parameterized with an `IBodyCache`--
+An instance of the `ElementManager` is parameterized with an `IBodyCache`--
 a strategy for storing handle/body relationships. Each Handly-based model
 should provide its own, model-specific implementation of the `IBodyCache`,
 which may be as tricky as overflowing LRU cache(s) or as simple as a `HashMap`:
@@ -977,8 +977,8 @@ in the [Step One repository](https://github.com/pisv/gethandly.1st)
 is a bit more involved, since there are several ways in which a project
 can change: it may be closed or (re-)opened, its description may change, etc.
 We spare you the details because they add nothing substantial to discussion.
-If you are interested, you can study yourself the complete implementation
-of the `FooDeltaProcessor` and the corresponding `FooModelTest`.
+If you are interested, you can study the complete implementation of the
+`FooDeltaProcessor` and the corresponding `FooModelTest`.
 
 ## Closing Step One
 

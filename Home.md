@@ -1,6 +1,6 @@
 # Get a Handle on Handly!
 **A step-by-step guide to getting started with Eclipse Handly
-https://eclipse.org/handly/**
+<https://eclipse.org/handly/>**
 
 Probably the best way to tell you about Handly is to walk you through the
 development of an example. We'll use a simple Xtext-based language as the

@@ -79,8 +79,6 @@ public class FooInputElementProvider
     }
 }
 ```
-For this code to compile, we have to add `org.eclipse.handly.ui` to the list
-of required bundles of the `org.eclipse.handly.examples.basic.ui` plug-in.
 
 That's it. Nothing more is required to enable Handly/Xtext integration.
 
@@ -153,10 +151,11 @@ and expose the model context in `FooModel`:
 ```
 
 That will make the notification manager accessible to the generic working copy
-change notification facility in the class `SourceFile` (for details, see the
-`workingCopyModeChanged_` method and the nested class `NotifyingReconcileOperation`).
+change notification facility (for details, see the
+`ISourceFileImplSupport.workingCopyModeChanged_` method and the nested class
+`NotifyingReconcileOperation`).
 
-And while we are here, let's also handle the working copy as a special case
+And while we are here, let's also handle the special case of a working copy
 in the `FooDeltaProcessor`:
 
 ```java

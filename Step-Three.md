@@ -1,7 +1,7 @@
 # Step Three: Viewing the Model
 
 In [[Step Two]] we have built a complete code model for
-our programming language, Foo. Now it's time to put it to use.
+our programming language, Foo. Now it is time to put it to use.
 In this step we will build a Foo Navigator view observing the model.
 The complete source code for this step of the running example is available
 in the [Step Three repository](https://github.com/pisv/gethandly.3rd).
@@ -125,10 +125,14 @@ of the `org.eclipse.handly.examples.basic.ui` plug-in:
 
 ```
 Require-Bundle: org.eclipse.handly.examples.basic,
+ org.eclipse.handly.examples.basic.ide,
  org.eclipse.handly,
+ org.eclipse.handly.ui,
  org.eclipse.handly.xtext.ui,
  org.eclipse.xtext.ui,
  org.eclipse.xtext.ui.shared,
+ org.eclipse.ui,
+ org.eclipse.ui.editors,
  org.eclipse.ui.navigator
 ```
 
@@ -450,10 +454,10 @@ protocols involved, and here we will give you a taste of what it is all about.
 
 The primary interfaces are `IElementChangeListener`, `IElementChangeEvent`,
 and `IElementDelta`. There are also some useful implementations, namely
-`ElementChangeEvent`, `ElementDelta`, and `ElementDifferencer`, which can be
+`ElementChangeEvent`, `ElementDelta`, and `ElementChangeRecorder`, which can be
 subclassed if needed.
 
-The interface `IElementChangeListener` should be implemented by clients
+The interface `IElementChangeListener` needs to be implemented by clients
 that are interested in receiving notifications of changes to elements of
 a Handly-based model. These listeners are installed using a model-specific
 subscription mechanism and are given after-the-fact notification of exactly
@@ -461,19 +465,21 @@ what elements of the model changed and how they changed.
 
 The object passed to an element change listener is an instance of
 `IElementChangeEvent`. The most important bits of information in the event
-are the event type, and the element delta. The event type is simply an integer
+are the event type, and the element delta(s). The event type is simply an integer
 that describes what kind of event occurred. We will focus on `POST_CHANGE`
 event type here, i.e. on those events that occur during corresponding
 `POST_CHANGE` resource change notifications.
 
-The element delta is actually the root of a tree of `IElementDelta` objects.
-The tree of deltas is structured much like the tree of `IElement` objects
-that makes up the model, so that each delta object corresponds to exactly
-one element of the model. The delta hierarchy will include deltas for all
-affected elements that existed prior to the model changing operation, and
-all affected elements that existed after the operation. Think of it as
-the union of the model contents before and after a particular operation,
-with all unchanged sub-trees pruned out.
+To support models that allow multiple trees of elements, the element change event
+is able to carry multiple top-level delta objects, one top-level delta object per
+a changed element tree. Each top-level element delta is actually the root of a
+tree of `IElementDelta` objects. The tree of deltas is structured much like the
+tree of `IElement` objects, so that each delta object corresponds to exactly one
+element of the model. The delta hierarchy will include deltas for all affected
+elements that existed prior to the model changing operation, and all affected
+elements that existed after the operation. Think of it as the union of the model
+contents before and after a particular operation, with all unchanged sub-trees
+pruned out.
 
 Each delta object provides the following information, which can be
 uniformly accessed via methods in the class `ElementDeltas`:
@@ -720,7 +726,7 @@ public class FooModelNotificationTest
         @Override
         public void elementChanged(IElementChangeEvent event)
         {
-            delta = (ElementDelta)event.getDelta();
+            delta = (ElementDelta)event.getDelta()[0];
         }
     }
 }
@@ -900,15 +906,15 @@ The test case will now pass.
 
 Well, in this case it was quite simple, but for models with
 a more complex mapping to workspace resources the implementation
-would be appropriately more elaborate.
+would be more elaborate.
 
 Also, please note that the actual implementation of `FooDeltaProcessor`
 in the [Step Three repository](https://github.com/pisv/gethandly.3rd)
 is a bit more involved, since there are several ways in which a project
 can change: it may be closed or (re-)opened, its description may change, etc.
 We spare you the details because they add nothing substantial to discussion.
-If you are interested, you can study yourself the complete implementation
-of the `FooDeltaProcessor` and the corresponding `FooModelNotificationTest`.
+If you are interested, you can study the complete implementation of the
+`FooDeltaProcessor` and the corresponding `FooModelNotificationTest`.
 
 Great, now we need to make our view respond to model change notifications
 to keep the view up-to-date with the model.
