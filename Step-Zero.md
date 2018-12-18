@@ -7,7 +7,7 @@ environment for our running example.
 ## Setting Up Eclipse
 
 In our case, **Eclipse IDE for Java and DSL Developers** would be the best choice.
-This tutorial assumes Eclipse Photon (4.8.x) release. You can find a build for
+This tutorial assumes Eclipse 2018-12 (4.10) release. You can find a build for
 your platform by visiting <https://www.eclipse.org/downloads/eclipse-packages/>.
 
 ## Setting Up a Workspace

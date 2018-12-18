@@ -1,1 +1,1 @@
-© 2018 1C-Soft LLC. Made available under the Eclipse Public License 2.0
+© 2019 1C-Soft LLC. Made available under the Eclipse Public License 2.0
