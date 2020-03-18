@@ -100,10 +100,10 @@ public class FooDef
 
 The classes `SourceFile` and `SourceConstruct` provide a useful base
 implementation for representing source files and their structural elements
-in a Handly-based model. Since our model wll only support source files
-residing in the Eclipse workspace, it is more convenient for us to extend
+in a Handly-based model. Our model wll only support source files
+residing in the Eclipse workspace, so it is more convenient for us to extend
 `WorkspaceSourceFile` rather than its resource-agnostic superclass,
-`SourceFile`.
+`SourceFile`. (Since version 1.3, Handly also provides out-of-the-box support for source files outside the Eclipse workspace that have an underlying `IFileStore`. See `BaseSourceFile` and `FsSourceFile`)
 
 Once again, we need to complete the implementation by defining the appropriate
 constructors and overriding the inherited abstract methods. Let's begin

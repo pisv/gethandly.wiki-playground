@@ -7,8 +7,8 @@ environment for our running example.
 ## Setting Up Eclipse
 
 In our case, **Eclipse IDE for Java and DSL Developers** would be the best choice.
-This tutorial assumes 2019-06 release. You can find a build for
-your platform by visiting <https://www.eclipse.org/downloads/eclipse-packages/>.
+This tutorial assumes 2020-03 release. You can find a build for
+your platform by visiting <https://www.eclipse.org/downloads/packages/>.
 
 ## Setting Up a Workspace
 
