@@ -839,7 +839,7 @@ public class FooModelManager
         // new code -->
         fooModel.getWorkspace().removeResourceChangeListener(this);
         // <-- new code
-        handleManager = null;
+        elementManager = null;
         fooModel = null;
     }
 ```
