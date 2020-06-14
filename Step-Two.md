@@ -933,93 +933,7 @@ which are implemented as follows:
 The inherited `getChildren(Class)` method returns the immediate children
 of the element that have the given type.
 
-Okay, that's enough for now. Let's test the new functionality:
-
-```java
-// package org.eclipse.handly.internal.examples.basic.ui.model
-
-/**
- * <code>FooFile</code> tests.
- */
-public class FooFileTest
-    extends WorkspaceTestCase
-{
-    private IFooFile fooFile;
-
-    @Override
-    protected void setUp() throws Exception
-    {
-        super.setUp();
-        IFooProject fooProject = FooModelCore.create(
-            setUpProject("Test002"));
-        fooFile = fooProject.getFooFile("test.foo");
-    }
-
-    public void testFooFile() throws Exception
-    {
-        assertTrue(fooFile.exists());
-
-        assertEquals(5, fooFile.getChildren().length);
-
-        IFooVar[] vars = fooFile.getVars();
-        assertEquals(2, vars.length);
-        assertEquals(fooFile.getVar("x"), vars[0]);
-        assertEquals(fooFile.getVar("y"), vars[1]);
-
-        IFooDef[] defs = fooFile.getDefs();
-        assertEquals(3, defs.length);
-        assertEquals(fooFile.getDef("f", 0), defs[0]);
-        assertEquals(fooFile.getDef("f", 1), defs[1]);
-        assertEquals(fooFile.getDef("f", 2), defs[2]);
-
-        assertEquals(0, defs[0].getParameterNames().length);
-
-        String[] parameterNames = defs[1].getParameterNames();
-        assertEquals(1, parameterNames.length);
-        assertEquals("x", parameterNames[0]);
-
-        parameterNames = defs[2].getParameterNames();
-        assertEquals(2, parameterNames.length);
-        assertEquals("x", parameterNames[0]);
-        assertEquals("y", parameterNames[1]);
-    }
-}
-```
-
-Run it as a JUnit Plug-in Test. You can use the launch configuration
-predefined in the test fragment.
-
-Amazingly, it works! But how *fast*?
-
-Let's run the body of the `testFooFile` method 100,000 times in a loop:
-
-```java
-// FooFileTest.java
-
-    public void testFooFile() throws Exception
-    {
-        for (int i = 0; i < 100000; i++)
-        {
-            // ...
-        }
-    }
-```
-
-It might seem it would never return! (Okay, it took about 5 minutes
-on our machine...) Couldn't it do better than this?
-
-If you set a breakpoint in the `FooFile.buildSourceStructure_` method and
-rerun the `FooFileTest` under debugger, you will see that every request
-for the Foo file's body leads to rebuilding of the whole structure
-of the source file and hence, to reparsing. It is done six (!) times
-within each iteration of the loop -- once for each non-handle-only
-method call.
-
-Hopefully, you already know how to deal with it. That's what
-the `FooModelCache` is for. The reason for the incessant reparsing
-is simply that we don't cache source element bodies yet.
-
-Let's fix it:
+And last but not least, we need to update the cache implementation:
 
 ```java
 class FooModelCache
@@ -1135,9 +1049,61 @@ We don't need to use an LRU cache for child elements of Foo files (a `HashMap`
 is sufficient) because these elements always come and go together with
 their parent `FooFile` element.
 
-If you rerun this simple performance test now, it will take dramatically
-less time (about 2 seconds on our machine). *2 seconds vs 5 minutes*.
-You might call it a difference!
+Let's test the new functionality:
+
+```java
+// package org.eclipse.handly.internal.examples.basic.ui.model
+
+/**
+ * <code>FooFile</code> tests.
+ */
+public class FooFileTest
+    extends WorkspaceTestCase
+{
+    private IFooFile fooFile;
+
+    @Override
+    protected void setUp() throws Exception
+    {
+        super.setUp();
+        IFooProject fooProject = FooModelCore.create(
+            setUpProject("Test002"));
+        fooFile = fooProject.getFooFile("test.foo");
+    }
+
+    public void testFooFile() throws Exception
+    {
+        assertTrue(fooFile.exists());
+
+        assertEquals(5, fooFile.getChildren().length);
+
+        IFooVar[] vars = fooFile.getVars();
+        assertEquals(2, vars.length);
+        assertEquals(fooFile.getVar("x"), vars[0]);
+        assertEquals(fooFile.getVar("y"), vars[1]);
+
+        IFooDef[] defs = fooFile.getDefs();
+        assertEquals(3, defs.length);
+        assertEquals(fooFile.getDef("f", 0), defs[0]);
+        assertEquals(fooFile.getDef("f", 1), defs[1]);
+        assertEquals(fooFile.getDef("f", 2), defs[2]);
+
+        assertEquals(0, defs[0].getParameterNames().length);
+
+        String[] parameterNames = defs[1].getParameterNames();
+        assertEquals(1, parameterNames.length);
+        assertEquals("x", parameterNames[0]);
+
+        parameterNames = defs[2].getParameterNames();
+        assertEquals(2, parameterNames.length);
+        assertEquals("x", parameterNames[0]);
+        assertEquals("y", parameterNames[1]);
+    }
+}
+```
+
+Run it as a JUnit Plug-in Test. You can use the launch configuration
+predefined in the test fragment.
 
 ## Closing Step Two
 
