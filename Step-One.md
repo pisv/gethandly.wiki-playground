@@ -827,7 +827,7 @@ public class FooModelManager
     public void startup() throws Exception
     {
         fooModel = new FooModel();
-        handleManager = new HandleManager(new FooModelCache());
+        elementManager = new ElementManager(new FooModelCache());
         // new code -->
         fooModel.getWorkspace().addResourceChangeListener(this,
             IResourceChangeEvent.POST_CHANGE);
