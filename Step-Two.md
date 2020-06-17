@@ -9,10 +9,15 @@ down to structural elements inside source files. The complete source code
 for this step of the running example is available in the
 [Step Two repository](https://github.com/pisv/gethandly.2nd).
 
-As usual, we begin by defining the interfaces for the new model elements
-(in the package `org.eclipse.handly.examples.basic.ui.model`
-of the `org.eclipse.handly.examples.basic.ui` bundle). We will make
-these interfaces extend the relevant 'extension interfaces' such as
+As usual, we begin by defining the interfaces for the new model elements in the package:
+
+`org.eclipse.handly.examples.basic.ui.model`
+
+of the
+
+`org.eclipse.handly.examples.basic.ui`
+
+bundle. We will make these interfaces extend the relevant 'extension interfaces' such as
 `IElementExtension`, `ISourceElementExension`, and `ISourceFileExtension`
 to introduce a number of generally useful default methods for convenience,
 but could as well define the model element interfaces entirely from scratch.
@@ -75,8 +80,11 @@ public interface IFooDef
 }
 ```
 
-The corresponding implementation classes are defined in the package
-`org.eclipse.handly.internal.examples.basic.ui.model` of the same bundle:
+The corresponding implementation classes are defined in the package:
+
+`org.eclipse.handly.internal.examples.basic.ui.model`
+
+of the same bundle:
 
 ```java
 public class FooFile
@@ -100,10 +108,10 @@ public class FooDef
 
 The classes `SourceFile` and `SourceConstruct` provide a useful base
 implementation for representing source files and their structural elements
-in a Handly-based model. Our model wll only support source files
+in a Handly-based model. Our model will only support source files
 residing in the Eclipse workspace, so it is more convenient for us to extend
 `WorkspaceSourceFile` rather than its resource-agnostic superclass,
-`SourceFile`. (Since version 1.3, Handly also provides out-of-the-box support for source files outside the Eclipse workspace that have an underlying `IFileStore`. See `BaseSourceFile` and `FsSourceFile`)
+`SourceFile`. (Since version 1.3, Handly also provides out-of-the-box support for source files outside the Eclipse workspace that have an underlying `IFileStore`. See `BaseSourceFile` and `FsSourceFile`).
 
 Once again, we need to complete the implementation by defining the appropriate
 constructors and overriding the inherited abstract methods. Let's begin
@@ -583,7 +591,7 @@ configuration, the AST may be already available and can efficiently be reused.
 However, Handly is flexible enough to allow for framework configurations where
 even something like SAX can be used, skipping the AST creation altogether.
 
-In general, thus, the `buildSourceStructure_` method should check for the
+Thus, in general, the `buildSourceStructure_` method should check for the
 `SOURCE_AST` first and, if it is not available, parse the `SOURCE_STRING`
 using whatever means it sees fit. Actually, it is not as complicated as it
 may sound.
@@ -947,10 +955,10 @@ class FooModelCache
     // <-- new code
 
     private Object modelBody; // Foo model element's body
-    private HashMap<IElement, Object> projectCache; // Foo projects
+    private Map<IElement, Object> projectCache; // Foo projects
     // new code -->
     private ElementCache fileCache; // Foo files
-    private HashMap<IElement, Object> childrenCache; // children of Foo files
+    private Map<IElement, Object> childrenCache; // children of Foo files
     // <-- new code
 
     public FooModelCache()

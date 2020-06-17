@@ -1,9 +1,9 @@
 # Step One: Basic Model
 
 In this step we will take you through the entire development process
-of a Handly-based model, but for a little bit of functionality. We will
-implement a basic model with only two levels: `FooModel` containing `FooProject`s.
-While simple, this is going to be a complete, fully functional implementation.
+of a Handly-based model, but with minimal functionality. We will
+implement a basic model with only two levels: `FooModel` containing `FooProject`(s).
+While simple, this will be a complete, fully functional implementation.
 It will demonstrate the basic structuring and behavior of a Handly-based model
 and give you a taste of what it is all about. It will also serve as a
 starting point for our next step. The complete source code for this step
@@ -11,8 +11,15 @@ of the running example is available in the
 [Step One repository](https://github.com/pisv/gethandly.1st).
 
 We begin by defining the interfaces for Foo model elements
-in the package `org.eclipse.handly.examples.basic.ui.model`
-of the `org.eclipse.handly.examples.basic.ui` bundle:
+in the package:
+
+`org.eclipse.handly.examples.basic.ui.model`
+
+of the
+
+`org.eclipse.handly.examples.basic.ui`
+
+bundle:
 
 ```java
 public interface IFooModel
@@ -26,8 +33,11 @@ public interface IFooProject
 
 There are no methods yet, just the blank interface declarations.
 
-Let's define the corresponding implementation classes in the package
-`org.eclipse.handly.internal.examples.basic.ui.model` of the same bundle:
+Let's define the corresponding implementation classes in the package:
+
+`org.eclipse.handly.internal.examples.basic.ui.model`
+
+of the same bundle:
 
 ```java
 public class FooModel
@@ -55,8 +65,9 @@ the root element for convenience.
 
 At the moment, the code doesn't yet compile. We need to fill in the blanks
 and complete the implementation by providing the appropriate constructors
-and overriding the inherited abstract methods. Let's begin with the class
-`FooModel`:
+and overriding the inherited abstract methods.
+
+Let's begin with the class `FooModel`:
 
 ```java
 /**
@@ -252,7 +263,7 @@ The Foo nature doesn't configure any specific builders; the Xtext builder
 will be installed by the required Xtext nature.
 
 We still need to implement a couple of remaining abstract methods for our
-model elements: `buildStructure_` and `getModelManager_`. Those methods are
+model elements: `buildStructure_` and `getModelManager_`. These methods are
 central to implementation of the *handle/body idiom* in Handly.
 
 The basic idea is that mutable structure and properties of a model element
@@ -368,7 +379,7 @@ public class FooModelManager
 }
 ```
 
-An instance of the `ElementManager` is parameterized with an `IBodyCache`--
+An instance of the `ElementManager` is parameterized with an `IBodyCache` --
 a strategy for storing handle/body relationships. Each Handly-based model
 should provide its own, model-specific implementation of the `IBodyCache`,
 which may be as tricky as overflowing LRU cache(s) or as simple as a `HashMap`:
@@ -385,7 +396,7 @@ class FooModelCache
     private static final int DEFAULT_PROJECT_SIZE = 5;
 
     private Object modelBody; // Foo model element's body
-    private HashMap<IElement, Object> projectCache; // open Foo projects
+    private Map<IElement, Object> projectCache; // open Foo projects
 
     public FooModelCache()
     {
@@ -462,7 +473,7 @@ public class FooModel
 ```
 
 Now that we have a complete implementation for the class `FooModel`, let's
-test it. But before we can do it, two more items require our attention.
+test it. But before we can do this, two more items require our attention.
 
 First, to have the class `FooProject` compile without errors, we need to
 make it implement `IFooElementInternal` and provide an implementation for
@@ -976,7 +987,7 @@ Please note that the actual implementation of `FooDeltaProcessor`
 in the [Step One repository](https://github.com/pisv/gethandly.1st)
 is a bit more involved, since there are several ways in which a project
 can change: it may be closed or (re-)opened, its description may change, etc.
-We spare you the details because they add nothing substantial to discussion.
+We spare you the details because they add nothing substantial to our discussion.
 If you are interested, you can study the complete implementation of the
 `FooDeltaProcessor` and the corresponding `FooModelTest`.
 
