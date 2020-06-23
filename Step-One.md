@@ -3,7 +3,7 @@
 In this step we will take you through the entire development process
 of a Handly-based model, but with minimal functionality. We will
 implement a basic model with only two levels: `FooModel` containing `FooProject`(s).
-While simple, this will be a complete, fully functional implementation.
+While simple, this is going to be a complete, fully functional implementation.
 It will demonstrate the basic structuring and behavior of a Handly-based model
 and give you a taste of what it is all about. It will also serve as a
 starting point for our next step. The complete source code for this step
