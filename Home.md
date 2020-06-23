@@ -1,12 +1,12 @@
 # Get a Handle on Handly!
-**A step-by-step guide to getting started with Eclipse Handly
+**A step-by-step guide to getting started with Eclipse Handly™
 <https://eclipse.org/handly/>**
 
-Probably the best way to tell you about Handly is to walk you through the
-development of an example. We'll use a simple Xtext-based language as the
+Probably the best way to tell you about Eclipse Handly™ is to walk you through the
+development of an example. We'll use a simple language made using Eclipse Xtext™ as the
 basis for the running example. While nothing in the Handly Core depends
 on Xtext, going this way will be a bit easier for you to get started.
-The complete example is available as part of the Examples feature of Handly;
+The complete example is available as part of the Examples feature of Eclipse Handly;
 see the plug-ins `org.eclipse.handly.examples.basic` and
 `org.eclipse.handly.examples.basic.ui`.
 
@@ -53,7 +53,7 @@ understanding the main aspects of implementation of a Handly-based model.
 We further assume for simplification that `.foo` source files may only reside
 directly under a Foo project, i.e. there is no concept of 'build path' involved.
 
-Here's a sample structure of the workspace rendered from the Foo language's
+Here's a sample structure of the Eclipse workspace rendered from the Foo language's
 point of view:
 
     /            - Foo model
@@ -72,7 +72,7 @@ inside source files. In this article we'll walk you through the process
 of implementing this model with Handly.
 
 The article is organized as a step-by-step guide, each step taking you
-around Handly in increasing detail.
+around Eclipse Handly in increasing detail.
 
 1. [[Step Zero]] gets you set up for further development of the running example.
 2. [[Step One]] makes the simplest possible Handly-based model.
