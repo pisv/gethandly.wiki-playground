@@ -411,7 +411,9 @@ class FooModelCache
         else if (element instanceof IFooProject)
             return projectCache.get(element);
         else
+        /* BUG
             return null;
+         */
     }
 
     @Override
