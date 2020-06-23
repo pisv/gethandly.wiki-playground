@@ -1,8 +1,8 @@
 # Step One: Basic Model
 
 In this step we will take you through the entire development process
-of a Handly-based model, but with minimal functionality. We will
-implement a basic model with only two levels: `FooModel` containing `FooProject`(s).
+of a Handly-based model, but with minimal functionality. We will implement
+a basic model with only two levels: `FooModel` containing `FooProject`(s).
 While simple, this is going to be a complete, fully functional implementation.
 It will demonstrate the basic structuring and behavior of a Handly-based model
 and give you a taste of what it is all about. It will also serve as a
@@ -10,18 +10,11 @@ starting point for our next step. The complete source code for this step
 of the running example is available in the
 [Step One repository](https://github.com/pisv/gethandly.1st).
 
-We begin by defining the interfaces for Foo model elements
-in the package
-
-    org.eclipse.handly.examples.basic.ui.model
-
-of the
-
-    org.eclipse.handly.examples.basic.ui
-
-bundle:
+We begin by defining the interfaces for Foo model elements:
 
 ```java
+// package org.eclipse.handly.examples.basic.ui.model
+
 public interface IFooModel
 {
 }
@@ -33,13 +26,11 @@ public interface IFooProject
 
 There are no methods yet, just the blank interface declarations.
 
-Let's define the corresponding implementation classes in the package
-
-    org.eclipse.handly.internal.examples.basic.ui.model
-
-of the same bundle:
+Let's define the corresponding implementation classes:
 
 ```java
+// package org.eclipse.handly.internal.examples.basic.ui.model
+
 public class FooModel
     extends Element
     implements IFooModel, IModelImpl

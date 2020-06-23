@@ -1,7 +1,7 @@
 # Step Two: The Rest of the Model
 
 [[Step One]] has left us with the basics of a model. We have got
-a two-level hierarchy of `FooModel` containing `FooProject`s
+a two-level hierarchy of `FooModel` containing `FooProject`(s)
 and some resource delta processing for keeping the model up-to-date.
 We will use it as a starting point for this step, where we will build
 a complete *code model* for the Foo language, from the workspace root level
@@ -9,15 +9,8 @@ down to structural elements inside source files. The complete source code
 for this step of the running example is available in the
 [Step Two repository](https://github.com/pisv/gethandly.2nd).
 
-As usual, we begin by defining the interfaces for the new model elements in the package
-
-    org.eclipse.handly.examples.basic.ui.model
-
-of the
-
-    org.eclipse.handly.examples.basic.ui
-
-bundle. We will make these interfaces extend the relevant 'extension interfaces' such as
+As usual, we begin by defining the interfaces for the new model elements.
+We will make these interfaces extend the relevant 'extension interfaces' such as
 `IElementExtension`, `ISourceElementExension`, and `ISourceFileExtension`
 to introduce a number of generally useful default methods for convenience,
 but could as well define the model element interfaces entirely from scratch.
@@ -35,6 +28,8 @@ Since each of the common interfaces for model elements is just a marker interfac
 and contains no members, there is generally no drawback in extending them.
 
 ```java
+// package org.eclipse.handly.examples.basic.ui.model
+
 /**
  * Represents a Foo source file.
  */
@@ -80,13 +75,11 @@ public interface IFooDef
 }
 ```
 
-The corresponding implementation classes are defined in the package
-
-    org.eclipse.handly.internal.examples.basic.ui.model
-
-of the same bundle:
+The corresponding implementation classes are:
 
 ```java
+// package org.eclipse.handly.internal.examples.basic.ui.model
+
 public class FooFile
     extends WorkspaceSourceFile
     implements IFooFile, IFooElementInternal
@@ -111,7 +104,9 @@ implementation for representing source files and their structural elements
 in a Handly-based model. Our model will only support source files
 residing in the Eclipse workspace, so it is more convenient for us to extend
 `WorkspaceSourceFile` rather than its resource-agnostic superclass,
-`SourceFile`. (Since version 1.3, Handly also provides out-of-the-box support for source files outside the Eclipse workspace that have an underlying `IFileStore`. See `BaseSourceFile` and `FsSourceFile`).
+`SourceFile`. (Since version 1.3, Handly also provides out-of-the-box support
+for source files outside the Eclipse workspace that have an underlying
+`IFileStore`. See `BaseSourceFile` and `FsSourceFile`).
 
 Once again, we need to complete the implementation by defining the appropriate
 constructors and overriding the inherited abstract methods. Let's begin
