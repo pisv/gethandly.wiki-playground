@@ -11,13 +11,13 @@ of the running example is available in the
 [Step One repository](https://github.com/pisv/gethandly.1st).
 
 We begin by defining the interfaces for Foo model elements
-in the package:
+in the package
 
-`org.eclipse.handly.examples.basic.ui.model`
+    org.eclipse.handly.examples.basic.ui.model
 
 of the
 
-`org.eclipse.handly.examples.basic.ui`
+    org.eclipse.handly.examples.basic.ui
 
 bundle:
 
@@ -33,9 +33,9 @@ public interface IFooProject
 
 There are no methods yet, just the blank interface declarations.
 
-Let's define the corresponding implementation classes in the package:
+Let's define the corresponding implementation classes in the package
 
-`org.eclipse.handly.internal.examples.basic.ui.model`
+    org.eclipse.handly.internal.examples.basic.ui.model
 
 of the same bundle:
 
@@ -411,9 +411,7 @@ class FooModelCache
         else if (element instanceof IFooProject)
             return projectCache.get(element);
         else
-        /* BUG
             return null;
-         */
     }
 
     @Override

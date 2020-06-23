@@ -9,13 +9,13 @@ down to structural elements inside source files. The complete source code
 for this step of the running example is available in the
 [Step Two repository](https://github.com/pisv/gethandly.2nd).
 
-As usual, we begin by defining the interfaces for the new model elements in the package:
+As usual, we begin by defining the interfaces for the new model elements in the package
 
-`org.eclipse.handly.examples.basic.ui.model`
+    org.eclipse.handly.examples.basic.ui.model
 
 of the
 
-`org.eclipse.handly.examples.basic.ui`
+    org.eclipse.handly.examples.basic.ui
 
 bundle. We will make these interfaces extend the relevant 'extension interfaces' such as
 `IElementExtension`, `ISourceElementExension`, and `ISourceFileExtension`
@@ -80,9 +80,9 @@ public interface IFooDef
 }
 ```
 
-The corresponding implementation classes are defined in the package:
+The corresponding implementation classes are defined in the package
 
-`org.eclipse.handly.internal.examples.basic.ui.model`
+    org.eclipse.handly.internal.examples.basic.ui.model
 
 of the same bundle:
 
